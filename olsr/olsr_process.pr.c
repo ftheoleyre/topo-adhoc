@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 433A6092 433A6092 1 citi-einstein-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                             ";
+static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4390419D 4390419D 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -2220,6 +2220,7 @@ void update_tc (Packet* pkptr) {
 //
 //--------------------------------------------------
 
+
 //Returns the empty list (remove all elements)
 void route_empty(short route[MAX_NB_NODES]){
 	int		i;
@@ -2244,7 +2245,7 @@ void route_copy(short source[MAX_NB_NODES] , short dest[MAX_NB_NODES]){
 }
 
 //converts a route to a string
-void route_to_str(short route[MAX_NB_NODES], char* msg){
+char* route_to_str(short route[MAX_NB_NODES], char* msg){
 	int		i;
 	int		nb = 0;
 
@@ -2253,6 +2254,7 @@ void route_to_str(short route[MAX_NB_NODES], char* msg){
 	//print the content
 	for (i=1 ; i <= route[0] ; i++)
 		sprintf(msg, "%s %d", msg , route[i]);
+	return(msg);
 }
 
 
@@ -2400,7 +2402,7 @@ void route_list_empty(List* route){
 }
 
 //converts a route to a string
-void route_list_to_str(List * route , char* msg){
+char* route_list_to_str(List * route , char* msg){
 	int		i;
 	int		*elem;
 	
@@ -2413,6 +2415,34 @@ void route_list_to_str(List * route , char* msg){
 			elem = op_prg_list_access(route , i);
 			sprintf(msg, "%s %d", msg , *elem);
 		}
+	return(msg);
+}
+
+//converts a route to a string
+char* route_list_to_str_of_stat_id(List * route , char* msg){
+	int		i;
+	int		*elem;
+	
+	//initialization
+	sprintf(msg, "");
+	
+	//print the content
+	for (i=0 ; i < op_prg_list_size(route) ; i++)
+		{	
+			elem = op_prg_list_access(route , i);
+			sprintf(msg, "%s %d", msg , address_to_stat_id[*elem]);
+		}
+	return(msg);
+}
+
+
+//add one route
+void add_route_list(List* route , int node){
+	int		*elem;
+	
+	elem = malloc(sizeof(int));
+	*elem = node;
+	op_prg_list_insert(route , elem , OPC_LISTPOS_TAIL);
 }
 
 //Copy one route to another
@@ -2427,17 +2457,12 @@ void copy_route_list(List* source , List * dest){
 	for(i=0 ; i<op_prg_list_size(source) ; i++)
 		{
 			elem = op_prg_list_access(source, i);
-			op_prg_list_insert(dest , elem, OPC_LISTPOS_TAIL);
+			add_route_list(dest, *elem);
+			
+			//elem2 = malloc(sizeof(int));
+			//*elem2 = *elem;
+			//op_prg_list_insert(dest , elem2 , OPC_LISTPOS_TAIL);
 		}
-}
-
-//add one route
-void add_route_list(List* route , int node){
-	int		*elem;
-	
-	elem = malloc(sizeof(int));
-	*elem = node;
-	op_prg_list_insert(route , elem , OPC_LISTPOS_TAIL);
 }
 
 //Length of the route
@@ -2455,6 +2480,7 @@ void compute_shortest_routes(List* routes[MAX_NB_NODES][MAX_NB_NODES] , short g[
 	int 	length[MAX_NB_NODES][MAX_NB_NODES];	
 	//Condition to stop to search new routes in the graph for a particular source
 	Boolean	was_one_route_modified_or_added;
+	char	msg [300];
 	
 	//intialization
 	for (i=0; i < nb_nodes ; i++)
@@ -2486,7 +2512,6 @@ void compute_shortest_routes(List* routes[MAX_NB_NODES][MAX_NB_NODES] , short g[
 										length[s][v] = length[s][u] + 1;										
 										copy_route_list(routes[s][u] , routes[s][v]);
 										add_route_list(routes[s][v] , stat_id_to_address[v]);
-
 										was_one_route_modified_or_added = OPC_TRUE;
 									}							
 							}		
@@ -3694,16 +3719,20 @@ int write_cplex_files(){
 		for (j=0 ; j<MAX_NB_NODES ; j++)
 			g[i][j] = stats_links[i][j];
 
+	//matrix 1 || 0
+	for(i=0 ; i<MAX_NB_NODES ; i++)
+		for (j=0 ; j<MAX_NB_NODES ; j++)
+			g[i][j] = g[i][j] > 0;
+	
+	
 	//Symetrical matrix
 	for(i=0 ; i<MAX_NB_NODES ; i++)
 		for (j=0 ; j<MAX_NB_NODES ; j++)
 			if (g[i][j] > g[j][i])
 				g[j][i] = g[i][j];
-	for(i=0 ; i<MAX_NB_NODES ; i++)
-		for (j=0 ; j<MAX_NB_NODES ; j++)
-			if (g[i][j] < g[j][i])
-				g[i][j] = g[j][i];
 
+	
+	
 //--------------------------------------------------
 //	CPLEX Format  (overheads in bits per second)
 //--------------------------------------------------
@@ -3727,20 +3756,7 @@ int write_cplex_files(){
 		{		
 			fprintf(cplex_file , "%f ", stats_overheads_bits[i]);				
 			for(j=0;j<nb_nodes;j++)
-				{
-					switch (g[i][j]){
-						case NULL :
-							fprintf(cplex_file,"%d ",  0);
-						break;
-						case THICKNESS_PHYSIC_NEIGHBOR :
-							fprintf(cplex_file,"%d ",  1);
-						break;
-						default:
-							sprintf(msg, "type=%d" , g[i][j]);
-							op_sim_end("this type of link is unknown", msg,"","");
-						break;
-						}
-				}
+				fprintf(cplex_file,"%d ",  g[i][j]);
 			fprintf(cplex_file,"\n");							
 		}			
 	fclose(cplex_file);
@@ -3768,20 +3784,10 @@ int write_cplex_files(){
 		{
 			fprintf(cplex_file , "%f ", stats_overheads_pk[i]);
 
-			for(j=0;j<nb_nodes;j++)
-				{
-					switch (g[i][j]){
-						case NULL :
-							fprintf(cplex_file,"%d ",  0);
-						break;
-						case THICKNESS_PHYSIC_NEIGHBOR :
-							fprintf(cplex_file,"%d ",  1);
-						break;
-						default:
-							sprintf(msg, "type=%d" , g[i][j]);
-							op_sim_end("this type of link is unknown", msg,"","");
-						break;
-						}
+			for(j=0;j<nb_nodes;j++){
+				fprintf(cplex_file,"%d ",  g[i][j]);
+				if ((i == 3) && (j==0))
+					printf("ya le lien 1-4 ? %d\n", g[i][j]);
 				}
 			fprintf(cplex_file,"\n");							
 		}			
@@ -3835,7 +3841,7 @@ int write_cplex_files(){
 				if ((i != j) && (op_prg_list_size(routes[i][j]) != 0))
 					{
 						length_average += op_prg_list_size(routes[i][j]) - 1;
-						route_list_to_str(routes[i][j] , msg);
+						route_list_to_str_of_stat_id(routes[i][j] , msg);
 						fprintf(cplex_file , "%s -1\n", msg);
 					}
 				
@@ -3844,7 +3850,7 @@ int write_cplex_files(){
 					{
 						nb_nodes_connected ++;
 						length_average += op_prg_list_size(routes[i][j]) - 1;
-						route_list_to_str(routes[i][j] , msg);
+						route_list_to_str_of_stat_id(routes[i][j] , msg);
 						fprintf(cplex_file_2 , "%s -1\n", msg);
 					}
 			}

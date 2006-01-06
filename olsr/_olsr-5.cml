@@ -1,5 +1,0 @@
-node models:
-olsr_station_fixed
-olsr_station_with_mobility_model
-link models:
-path models:

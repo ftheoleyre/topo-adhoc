@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char process_wlan_mac_interface_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 42666C48 42666C48 1 ares-theo-1 Fabrice@Theoleyre 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                        ";
+static const char process_wlan_mac_interface_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A op_runsim 7 43C50900 43C50900 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                               ";
 #include <string.h>
 
 

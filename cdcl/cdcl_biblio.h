@@ -17,7 +17,7 @@
 		#define		INTERVALL_QUICK_STATS_COLLECTING		0.05
 
 		/*	General parameters	*/
-		#define		MAX_NB_NODES							150
+		#define		MAX_NB_NODES							250
 		#define		MAX_ADDRESS								300
 		#define		MAX_NB_APS								2
 		#define		MAX_NETWORK_RADIUS						15
@@ -147,7 +147,7 @@
 		#define		LOCALIZATION					1
 		#define		ROUTING							2
 
-		#define		LOCALIZATION_PROCESS_NAME		"cdcl-loc"
+		#define		LOCALIZATION_PROCESS_NAME		"somom"
 		#define		ROUTING_PROCESS_NAME			"vsr"
 
 

@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char aodv_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43298794 43298794 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char aodv_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED1A02 43ED1A02 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -98,6 +98,13 @@ FSM_EXT_DECS
 
 
 #define		TIMEOUT_ICI					2.0
+
+
+/*	For automatic attribution of Addresses		*/
+#define		ADDR_RANDOM						0
+#define		ADDR_WLAN						1
+#define		ADDR_CONFIGURED					2
+#define		ADDR_MAC_CDCL_FROM_NAME			3
 
 
 
@@ -3578,17 +3585,6 @@ aodv_process (void)
 				
 				
 				
-				//----------------------------------------------------
-				//
-				//					My address
-				//
-				//-----------------------------------------------------
-				
-				// get our address (use WLAN-MAC address)
-				op_ima_obj_attr_get(op_topo_parent(op_id_self()), 	"Wireless LAN MAC Address", &aodv_myAddr);
-				op_ima_obj_attr_get(op_id_self(), 					"is_AP", 					&is_AP);
-				assert(aodv_myAddr >= 0);
-				
 				
 				
 				
@@ -3598,6 +3594,7 @@ aodv_process (void)
 				//
 				//-----------------------------------------------------
 				
+				op_ima_obj_attr_get(op_id_self(), 					"is_AP", 					&is_AP);
 				
 				if (is_AP)
 					nb_aps++;
@@ -3978,8 +3975,46 @@ aodv_process (void)
 			/** state (init) enter executives **/
 			FSM_STATE_ENTER_UNFORCED_NOLABEL (2, "init", "aodv_process () [init enter execs]")
 				{
+				//Addresses
+				int			addr_attribution;
+				char		str[500];
+				
+				
+				
 				// synchronisation with lower levels
 				op_intrpt_schedule_self(op_sim_time() + TIME_INIT_MAC, 0);
+				
+				
+				
+				
+				//----------------------------------------------------
+				//
+				//					My address
+				//
+				//-----------------------------------------------------
+				
+				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
+				switch(addr_attribution){
+						
+						case ADDR_WLAN :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&aodv_myAddr);
+							//op_ima_obj_attr_set(op_id_self(),"My_Address",aodv_myAddr); 	
+						break;
+						
+						
+						case ADDR_MAC_CDCL_FROM_NAME :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
+							aodv_myAddr = atoi(str);
+							op_ima_obj_attr_set(op_topo_parent(op_id_self()),"Wireless LAN MAC Address", aodv_myAddr);
+							//op_ima_obj_attr_set(op_id_self() , "My_Address" ,aodv_myAddr); 	
+						break;
+						
+						default :
+							op_sim_end("The address auto-configuration is not well-configured" , "", "", "");
+						break;
+					}
+				if (aodv_myAddr==0)
+					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				}
 
 

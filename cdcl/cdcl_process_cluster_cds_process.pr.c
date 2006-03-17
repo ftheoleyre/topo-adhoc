@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 433A60E6 433A60E6 1 citi-einstein-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                             ";
+static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4405F4BF 4405F4BF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -67,6 +67,7 @@ FSM_EXT_DECS
 #define		ADDR_RANDOM					0
 #define		ADDR_WLAN					1
 #define		ADDR_CONFIGURED				2
+#define		ADDR_MAC_CDCL_FROM_NAME		3
 
 
 //----------------------------------------------------------------------
@@ -6228,6 +6229,22 @@ void route_empty(List* route){
 }
 
 //converts a route to a string
+void route_to_str_of_stat_id(List * route , char* msg){
+	int		i;
+	int		*elem;
+	
+	//initialization
+	sprintf(msg, "");
+	
+	//print the content
+	for (i=0 ; i < op_prg_list_size(route) ; i++)
+		{	
+			elem = op_prg_list_access(route , i);
+			sprintf(msg, "%s %d", msg , stats_addresses_to_id[*elem]);
+		}
+}
+
+//converts a route to a string
 void route_to_str(List * route , char* msg){
 	int		i;
 	int		*elem;
@@ -7801,16 +7818,17 @@ int write_cplex_files(){
 //--------------------------------------------------
 
 	//Copy the topology in a temporary graph matrix
-	for(i=0 ; i<nb_total ; i++)
+	for(i=0 ; i<MAX_NB_NODES ; i++)
 		for (j=0 ; j<MAX_NB_NODES ; j++)
 			g[i][j] = stats_links[i][j];
 	
 	//Symetrical matrix
-	for(i=0 ; i<nb_total ; i++)
+	for(i=0 ; i<MAX_NB_NODES ; i++)
 		for (j=0 ; j<MAX_NB_NODES ; j++)
 			if (g[i][j] > g[j][i])
 				g[j][i] = g[i][j];
-	for(i=0 ; i<nb_total ; i++)
+	
+	for(i=0 ; i<MAX_NB_NODES ; i++)
 		for (j=0 ; j<MAX_NB_NODES ; j++)
 			if (g[i][j] < g[j][i])
 				g[i][j] = g[j][i];
@@ -7953,7 +7971,7 @@ int write_cplex_files(){
 	//--------
 	fprintf(cplex_file,"%d\n",nb_total * (nb_total-1));						
 	if (cds_algos_type == WU_LI)
-		fprintf(cplex_file_2,"%d\n",nb_total * (nb_total-1));						
+		fprintf(cplex_file_2,"%d\n", nb_total-1);						
 	
 	//---------------------
 	//Routes intialization
@@ -7973,7 +7991,7 @@ int write_cplex_files(){
 				if (i != j)
 					{
 						length_average += op_prg_list_size(routes[i][j]) - 1;
-						route_to_str(routes[i][j] , msg);
+						route_to_str_of_stat_id(routes[i][j] , msg);
 						fprintf(cplex_file , "%s -1\n", msg);
 					}
 				
@@ -7983,7 +8001,7 @@ int write_cplex_files(){
 						if ((op_prg_list_size(routes[i][j]) != 0) && (stats_specificities[i]==NORMAL) && (stats_specificities[j]==AP))
 							{
 								length_average += op_prg_list_size(routes[i][j]) - 1;
-								route_to_str(routes[i][j] , msg);
+								route_to_str_of_stat_id(routes[i][j] , msg);
 								fprintf(cplex_file_2 , "%s -1\n", msg);
 							}					
 					}
@@ -8090,7 +8108,7 @@ int write_cplex_files(){
 				for(j=0;j<nb_total;j++)
 					if ((i != j) && (op_prg_list_size((cluster_routes[i][j])) != 0))
 						{
-							route_to_str(cluster_routes[i][j] , msg);
+							route_to_str_of_stat_id(cluster_routes[i][j] , msg);
 							fprintf(cplex_file , "%s -1\n", msg);
 						}
 			fprintf(cplex_file, "-1\n");
@@ -8140,7 +8158,7 @@ int write_cplex_files(){
 				for(j=0;j<nb_total;j++)
 					if ((i != j) && (op_prg_list_size((total_cluster_routes[i][j])) != 0))
 						{
-							route_to_str(total_cluster_routes[i][j] , msg);
+							route_to_str_of_stat_id(total_cluster_routes[i][j] , msg);
 							fprintf(cplex_file , "%s -1\n", msg);
 						}
 			fprintf(cplex_file, "-1\n");
@@ -8219,7 +8237,7 @@ int write_cplex_files(){
 	fprintf(cplex_file,"%d\n",nb_total-1);						
 	
 	if (cds_algos_type == WU_LI)
-		fprintf(cplex_file_2,"%d\n",nb_total-1);						
+		fprintf(cplex_file_2,"%d\n",nb_total * (nb_total-1));
 	
 	//---------------------
 	//Routes intialization
@@ -8243,18 +8261,18 @@ int write_cplex_files(){
 				if ((op_prg_list_size(cds_routes[i][j]) > 1) && (stats_specificities[i]==NORMAL) && (stats_specificities[j]==AP))
 				//if ((op_prg_list_size(cds_routes[i][j]) > 1) && (stats_specificities[i]==NORMAL) && (stats_state[j]==DOMINATOR))
 					{
-						route_to_str(cds_routes[i][j] , msg);
+						route_to_str_of_stat_id(cds_routes[i][j] , msg);
 						fprintf(cplex_file , "%s -1\n", msg);
 						if (stats_specificities[j]==AP)
 							nb_cds_connected++;
 					}
 				//All routes (via CDS only)
-				else if (cds_algos_type == WU_LI)
+				if (cds_algos_type == WU_LI)
 					{
 						//All routes
 						if ((op_prg_list_size(cds_routes[i][j]) != 0) && (i != j))
 							{
-								route_to_str(cds_routes[i][j] , msg);
+								route_to_str_of_stat_id(cds_routes[i][j] , msg);
 								fprintf(cplex_file_2 , "%s -1\n", msg);
 							}
 					}
@@ -9868,33 +9886,86 @@ Boolean is_a_complete_covering(List* covering){
 	neigh_cell	*ptr;
 	
 	ptr= neighbour_table;
-	while(ptr != NULL)
-		{
-			if ((ptr->bidirect) && (ptr->hops<=k_cds) && (!is_int_in_list(covering, ptr->address)))
-				{
-					if (DEBUG>LOW)
-						{
-							sprintf(msg, "%d not covered\n", ptr->address);
-							cluster_message(msg);
-						}
-					return(OPC_FALSE);
-				}
-			ptr = ptr->next;
+	while(ptr != NULL){
+		if ((ptr->bidirect) && (ptr->hops<=k_cds) && (!is_int_in_list(covering, ptr->address))){
+			if (DEBUG>LOW){
+				sprintf(msg, "%d not covered\n", ptr->address);
+				cluster_message(msg);
+			}
+			return(OPC_FALSE);
 		}
+		ptr = ptr->next;
+	}
 	return(OPC_TRUE);
 }
+
+//Does it exist unconnected neighbors ?
+Boolean exist_unconnected_neighbors(){
+	//Control
+	int			i;
+	//The neighbors of my neighbors
+	int			*int_ptr;
+	//Double walk in the neighborhood table
+	neigh_cell	*ptr , *ptr2;
+	//boolean control (loop for)
+	Boolean		found;
+
+	//For all neighbors
+	ptr = neighbour_table;
+	while(ptr != NULL){
+	
+		//the node is a neighbor
+		if ((ptr->bidirect) && (ptr->hops == 1)){
+		
+			//printf("NEIGH %d ", ptr->address);
+		
+			//thus it must be a neighbor of all my neighbors !
+			ptr2 = neighbour_table;
+			while(ptr2 != NULL){
+				
+				if ((ptr2->bidirect) && (ptr2->hops == 1) && (ptr->address != ptr2->address)){
+				
+					//printf(" %d ", ptr2->hops);
+				
+					found = OPC_FALSE;
+					for(i=0 ; (i < op_prg_list_size(ptr->neighbors)) && (!found) ; i++){
+						int_ptr = op_prg_list_access(ptr->neighbors , i);
+				
+						if (*int_ptr == ptr2->address)
+							found = OPC_TRUE;
+					}
+
+					if (!found){
+						//printf("%d DOMINATOR because %d / %d\n", my_address , ptr->address , ptr2->address);
+						return(OPC_TRUE);
+					}
+				}
+				ptr2 = ptr2->next;
+			}
+			
+		}
+		ptr = ptr->next;
+	}
+	return(OPC_FALSE);
+}
+
 
 //Return my state : dominator or dominatee
 int get_state_wu_li(){
 	List	*cds;
 	List	*covering;
-	List	*higher_weight_nodes;
+//	List	*higher_weight_nodes;
 	int		root;
 	char	msg[200];
 	
 	if (DEBUG>HIGH)
 		print_neighbour_table();
 	
+	//First condition: if no unconnected neighbors
+//	if (!exist_unconnected_neighbors())
+//		return(DOMINATEE);
+	
+		
 	//initialization
 	cds = op_prg_list_create();
 	covering = op_prg_list_create();
@@ -9937,12 +10008,12 @@ int get_state_wu_li(){
 
 	if (DEBUG >LOW)
 		{
-			sprintf(msg, "covering total\n");
+			sprintf(msg, "total covering\n");
 			cluster_message(msg);
 		}
 			   
 	//The list of higher weight nodes = computed cds ?	(The original rule of WU & LI)
-	if (1)//k_cds > 1)
+	/*if (1)//k_cds > 1)
 		{
 			higher_weight_nodes = get_list_of_higher_weight_nodes();
 			if (are_different_int_lists(cds , higher_weight_nodes))
@@ -9951,7 +10022,6 @@ int get_state_wu_li(){
 						{
 							sprintf(msg, "CDS computed != set of higher weight nodes\n");
 							cluster_message(msg);
-							test_message("tt\n");
 						}
 					empty_list(cds);
 					op_prg_mem_free(cds);
@@ -9962,6 +10032,7 @@ int get_state_wu_li(){
 					return(DOMINATOR);
 				}
 		}
+	*/
 	
 	//Lists destruction + final result
 	empty_list(cds);
@@ -12128,7 +12199,6 @@ cdcl_process_cluster_cds_process (void)
 				int 		i , j , addr; 
 				char		msg[150];
 				//Constants
-				int			addr_attribution;
 				Boolean		IS_BB_FLOODING_ACTIVATED;
 				Boolean		IS_AP_UNICAST_ACTIVATED;
 				Boolean		TOPOLOGY_DEBUG;
@@ -12220,33 +12290,6 @@ cdcl_process_cluster_cds_process (void)
 					}
 				
 				
-				//----------------------------------------------------
-				//
-				//					My address
-				//
-				//-----------------------------------------------------
-				
-				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
-				switch(addr_attribution)
-					{
-						case ADDR_RANDOM :
-							//I pick-up my wlan mac address
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							my_address = nb_aps + 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST - nb_aps);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_WLAN :
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_CONFIGURED :
-							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
-						break;
-					}
-				if (my_address==0)
-					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				
 				
 				
@@ -12565,12 +12608,13 @@ cdcl_process_cluster_cds_process (void)
 							
 					}
 				else if (cds_algos_type == WU_LI)
-					ttl_for_hellos = k_cds+1;
+					ttl_for_hellos = k_cds;
 				else
 					{
 						ttl_for_hellos 		= k_cds;
 						ttl_for_hello_mis 	= k_cds + 1;
 					}
+				
 				
 				
 				//---------------- ID Table -----------------
@@ -12892,6 +12936,11 @@ cdcl_process_cluster_cds_process (void)
 			/** state (Init) enter executives **/
 			FSM_STATE_ENTER_UNFORCED_NOLABEL (2, "Init", "cdcl_process_cluster_cds_process () [Init enter execs]")
 				{
+				//Addresses
+				int			addr_attribution;
+				char		str[500];
+				
+				
 				//Synchronisation with lower levels
 				op_intrpt_schedule_self(op_sim_time() + TIME_INIT_MAC,0);
 				
@@ -12928,6 +12977,46 @@ cdcl_process_cluster_cds_process (void)
 					}
 				
 				
+				
+				
+				
+				//----------------------------------------------------
+				//
+				//					My address
+				//
+				//-----------------------------------------------------
+				
+				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
+				switch(addr_attribution){
+						case ADDR_RANDOM :
+							//I pick-up my wlan mac address
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							my_address = nb_aps + 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST - nb_aps);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_WLAN :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_CONFIGURED :
+							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
+						break;
+						
+						case ADDR_MAC_CDCL_FROM_NAME :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
+							my_address = atoi(str);
+							op_ima_obj_attr_set(op_topo_parent(op_id_self()),"Wireless LAN MAC Address", my_address);
+							op_ima_obj_attr_set(op_id_self() , "My_Address" , my_address); 	
+						break;
+						
+						default :
+							op_sim_end("The address auto-configuration is not well-configured" , "", "", "");
+						break;
+					}
+				if (my_address==0)
+					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				}
 
 
@@ -16068,14 +16157,13 @@ cdcl_process_cluster_cds_process (void)
 				// DATA Paging for all AP -> direct to the higher layer (without control), else try to inspect all required conditions
 				if (is_pk_type_for_paging)
 					op_pk_send(op_pk_copy(pkptr), STRM_TO_HIGHER);
-				else if (is_pk_type_for_higher && is_ttl_enough)
-					{
+				else if (is_pk_type_for_higher && is_ttl_enough){
 						if (process_higher_layer_id == ZERO)
 							{
 								op_pk_print(pkptr);
 								op_sim_end("We must forward and pk to the upper layer" , "and this upper layer doesn't exist for us" , "please set a valid attribute model" , "");
 							}
-							
+						
 						//Special Info Field
 						op_pk_nfd_get(pkptr, "SRC_INIT", &address_src_init);
 						
@@ -16087,8 +16175,7 @@ cdcl_process_cluster_cds_process (void)
 						is_pk_from_bb 				= is_pk_from_son_or_father || (is_pk_from_bb && process_higher_layer_type == ROUTING);
 								
 						//Forward to the higher layer if it is not seen and for it
-						if ((type_packet >= DATA_PK_TYPE) && (is_pk_not_seen))
-							{
+						if ((type_packet >= DATA_PK_TYPE) && (is_pk_not_seen)){
 								//Forwards to the localization level if the packet is for me
 								if ( ((address_dest == ADDR_MULTICAST_BACKBONE) && (is_pk_from_bb)) || (address_dest == my_address))
 									{

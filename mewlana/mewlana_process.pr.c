@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char mewlana_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 41F126E0 41F126E0 1 ares-theo-1 Fabrice@Theoleyre 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                        ";
+static const char mewlana_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED1905 43ED1905 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -48,15 +48,15 @@ FSM_EXT_DECS
 
 //	General parameters
 #define		MAX_NETWORK_RADIUS				10
-#define		MAX_NB_NODES					60
-#define		MAX_ADDRESS						300
+#define		MAX_NB_NODES					150
+#define		MAX_ADDRESS						150
 #define		LOW_SPEED						1
 #define		HIGH_SPEED						2
 #define		PROMISCUOUS_FOR_UNICAST			0
 
 //	Constants to define Maximum Array Dimension
 #define		MAX_DATA_PK						100000
-#define		MAX_AP_HELLO_PK					100000
+#define		MAX_AP_HELLO_PK					1000
 
 // DATA
 #define		INTERVALL_DATA_PK_AP			2
@@ -71,6 +71,7 @@ FSM_EXT_DECS
 #define		ADDR_RANDOM						0
 #define		ADDR_WLAN						1
 #define		ADDR_CONFIGURED					2
+#define		ADDR_MAC_CDCL_FROM_NAME			3
 	
 
 // Special Addresses (Multicast for APs...)
@@ -1897,6 +1898,12 @@ mewlana_process (void)
 			/** state (Init) enter executives **/
 			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "Init", "mewlana_process () [Init enter execs]")
 				{
+				//Addresses
+				int			addr_attribution;
+				char		str[500];
+				
+				
+				
 				//Synchronisation with lower levels
 				op_intrpt_schedule_self(op_sim_time() + TIME_INIT_MAC,0);
 				
@@ -1904,6 +1911,43 @@ mewlana_process (void)
 				if (begin_time==0)
 					begin_time = time(NULL);
 				
+				//----------------------------------------------------
+				//
+				//					My address
+				//
+				//-----------------------------------------------------
+				
+				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
+				switch(addr_attribution){
+						case ADDR_RANDOM :
+							//I pick-up my wlan mac address
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							my_address = nb_aps + 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST - nb_aps);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_WLAN :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_CONFIGURED :
+							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
+						break;
+						
+						case ADDR_MAC_CDCL_FROM_NAME :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
+							my_address = atoi(str);
+							op_ima_obj_attr_set(op_topo_parent(op_id_self()),"Wireless LAN MAC Address", my_address);
+							op_ima_obj_attr_set(op_id_self() , "My_Address" , my_address); 	
+						break;
+						
+						default :
+							op_sim_end("The address auto-configuration is not well-configured" , "", "", "");
+						break;
+					}
+				if (my_address==0)
+					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				
 				}
 
@@ -1932,39 +1976,15 @@ mewlana_process (void)
 				FILE		*file;
 				int 		i,j, addr; 
 				char		msg[200];
+				//AP Position
+				int			process_id , node_id;
+				double		XMAX , YMAX;
+				int			MOBILITY_MODEL;
 				
-				Packet* pkptr;
 				
 				
-				//----------------------------------------------------
-				//
-				//					My address
-				//
-				//-----------------------------------------------------
 				
-				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
-				switch(addr_attribution)
-					{
-						case ADDR_RANDOM :
-							//I pick-up my wlan mac address
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							my_address = nb_aps + 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST - nb_aps);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_WLAN :
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_CONFIGURED :
-							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
-						break;
-					}
-				if (my_address==0)
-					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				
-				op_ima_sim_attr_get(OPC_IMA_INTEGER,"NB_CONNECTIONS", &nb_connections);
 				
 				//----------------------------------------------------
 				//
@@ -1974,12 +1994,13 @@ mewlana_process (void)
 				
 				//The simulation paramaters
 				//For this Node
-				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG",		&DEBUG);
-				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_AP_REG", &debug_ap_reg);
-				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_DATA", 	&debug_data);
-				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_LOAD", 	&debug_load);
-				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DATA_PK_SIZE",	&data_pk_size);
-				op_ima_obj_attr_get(op_id_self(),		"Is_AP",		&is_AP); 
+				op_ima_sim_attr_get (OPC_IMA_INTEGER,	"NB_CONNECTIONS",	&nb_connections);
+				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG",			&DEBUG);
+				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_AP_REG", 	&debug_ap_reg);
+				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_DATA", 		&debug_data);
+				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DEBUG_LOAD", 		&debug_load);
+				op_ima_sim_attr_get (OPC_IMA_INTEGER, 	"DATA_PK_SIZE",		&data_pk_size);
+				op_ima_obj_attr_get(op_id_self(),		"Is_AP",			&is_AP); 
 				
 				if (is_AP)
 					nb_aps++;
@@ -2002,6 +2023,34 @@ mewlana_process (void)
 				
 				
 				
+				//----------------------------------------------------
+				//
+				//				POSITION OF THE AP
+				//
+				//-----------------------------------------------------
+				
+				
+				
+				//The AP is central only if it exists one single AP
+				if (is_AP)
+					{
+						process_id = op_id_self();
+						node_id = op_topo_parent (process_id);
+						op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SP_LOW_MOBILITY_MODEL"	, &MOBILITY_MODEL);
+						
+						//NB : NEITHER_POSITION_NOR_MOBILITY = 5
+						if (MOBILITY_MODEL != 5)
+							{
+								op_ima_sim_attr_get(OPC_IMA_DOUBLE, "X_MAX"  , &XMAX);
+								op_ima_sim_attr_get(OPC_IMA_DOUBLE, "Y_MAX"  , &YMAX);
+								op_ima_obj_attr_set(node_id, "x position", XMAX/2);
+								op_ima_obj_attr_set(node_id, "y position", YMAX/2);
+							}
+					}
+				
+				
+				
+				
 				
 				
 				
@@ -2014,9 +2063,9 @@ mewlana_process (void)
 				
 				//protection against arrays overflows
 				if (my_address >= MAX_ADDRESS)
-					op_sim_end("We have too many nodes","please increase the value of MAX_ADDRESS","in the header block of the cdcl_routing process","");
+					op_sim_end("We have too many nodes","please increase the value of MAX_ADDRESS","in the header block of the mewlana process","");
 				if (nb_nodes >= MAX_NB_NODES)
-					op_sim_end("We have too many nodes","please increase the value of MAX_NB_NODES","in the header block of the cdcl_routing process","");
+					op_sim_end("We have too many nodes","please increase the value of MAX_NB_NODES","in the header block of the mewlana process","");
 				
 				
 				//----------------------- Stats ---------------------

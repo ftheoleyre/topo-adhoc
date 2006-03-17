@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4390419D 4390419D 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED18CF 43ED18CF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -79,6 +79,7 @@ FSM_EXT_DECS
 #define		ADDR_RANDOM						0
 #define		ADDR_WLAN						1
 #define		ADDR_CONFIGURED					2
+#define		ADDR_MAC_CDCL_FROM_NAME			3
 	
 
 
@@ -4388,6 +4389,12 @@ olsr_process (void)
 			/** state (Init) enter executives **/
 			FSM_STATE_ENTER_UNFORCED_NOLABEL (0, "Init", "olsr_process () [Init enter execs]")
 				{
+				//Addresses
+				int			addr_attribution;
+				char		str[500];
+				
+				
+				
 				//Synchronisation with lower levels
 				op_intrpt_schedule_self(op_sim_time() + TIME_INIT_MAC,0);
 				
@@ -4396,6 +4403,45 @@ olsr_process (void)
 					begin_time = time(NULL);
 				
 				
+				
+				
+				//----------------------------------------------------
+				//
+				//					My address
+				//
+				//-----------------------------------------------------
+				
+				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
+				switch(addr_attribution){
+						case ADDR_RANDOM :
+							//I pick-up my wlan mac address
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							my_address = nb_aps + 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST - nb_aps);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_WLAN :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
+							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
+						break;
+						
+						case ADDR_CONFIGURED :
+							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
+						break;
+						
+						case ADDR_MAC_CDCL_FROM_NAME :
+							op_ima_obj_attr_get(op_topo_parent(op_id_self()) , "name" , str);
+							my_address = atoi(str);
+							op_ima_obj_attr_set(op_topo_parent(op_id_self()),"Wireless LAN MAC Address", my_address);
+							op_ima_obj_attr_set(op_id_self() , "My_Address" , my_address); 	
+						break;
+						
+						default :
+							op_sim_end("The address auto-configuration is not well-configured" , "", "", "");
+						break;
+					}
+				if (my_address==0)
+					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				}
 
 
@@ -4486,33 +4532,6 @@ olsr_process (void)
 				
 				
 				
-				//----------------------------------------------------
-				//
-				//					My address
-				//
-				//-----------------------------------------------------
-				
-				op_ima_obj_attr_get(op_id_self(),"Address_Attribution",&addr_attribution); 
-				switch(addr_attribution)
-					{
-						case ADDR_RANDOM :
-							//I pick-up my wlan mac address
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							my_address = 1 + op_dist_uniform(LOWER_ADDR_FOR_MULTICAST);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_WLAN :
-							op_ima_obj_attr_get(op_topo_parent(op_id_self()),"Wireless LAN MAC Address",&my_address);
-							op_ima_obj_attr_set(op_id_self(),"My_Address",my_address); 	
-						break;
-						
-						case ADDR_CONFIGURED :
-							op_ima_obj_attr_get(op_id_self(),"My_Address",&my_address); 	
-						break;
-					}
-				if (my_address==0)
-					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
 				
 				
 				//----------------------------------------------------

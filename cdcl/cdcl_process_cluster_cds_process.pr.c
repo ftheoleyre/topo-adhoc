@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4405F4BF 4405F4BF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4460AB9C 4460AB9C 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -51,6 +51,7 @@ FSM_EXT_DECS
 #define		NORMAL_DEBUG				1
 #define		STATS_DEBUG					1
 
+#define		MCDS_COMPUTE				1
 #define		DEBUG_INSTANTANEOUS			0
 #define		DEBUG_NETWORK_CTRL			0
 #define		DEBUG_CPLEX					0
@@ -96,7 +97,7 @@ FSM_EXT_DECS
 #define		INTERVALL_UPDATE_TABLE		1.0
 
 //I generate a figure of cds and clusters every x seconds
-#define		INTERVALL_FIGURES			10
+#define		INTERVALL_FIGURES			0.5
 
 
 //----------------------------------------------------------------------
@@ -6221,11 +6222,10 @@ int get_relay(List* route , int pos){
 void route_empty(List* route){
 	int	*elem;
 
-	while (op_prg_list_size(route) > 0)
-		{
-			elem = op_prg_list_remove(route, OPC_LISTPOS_HEAD);
-			op_prg_mem_free(elem);
-		}
+	while (op_prg_list_size(route) > 0){
+		elem = op_prg_list_remove(route, OPC_LISTPOS_HEAD);
+		op_prg_mem_free(elem);
+	}
 }
 
 //converts a route to a string
@@ -6237,11 +6237,10 @@ void route_to_str_of_stat_id(List * route , char* msg){
 	sprintf(msg, "");
 	
 	//print the content
-	for (i=0 ; i < op_prg_list_size(route) ; i++)
-		{	
-			elem = op_prg_list_access(route , i);
-			sprintf(msg, "%s %d", msg , stats_addresses_to_id[*elem]);
-		}
+	for (i=0 ; i < op_prg_list_size(route) ; i++){	
+		elem = op_prg_list_access(route , i);
+		sprintf(msg, "%s %d", msg , stats_addresses_to_id[*elem]);
+	}
 }
 
 //converts a route to a string
@@ -6253,11 +6252,10 @@ void route_to_str(List * route , char* msg){
 	sprintf(msg, "");
 	
 	//print the content
-	for (i=0 ; i < op_prg_list_size(route) ; i++)
-		{	
-			elem = op_prg_list_access(route , i);
-			sprintf(msg, "%s %d", msg , *elem);
-		}
+	for (i=0 ; i < op_prg_list_size(route) ; i++){	
+		elem = op_prg_list_access(route , i);
+		sprintf(msg, "%s %d", msg , *elem);
+	}
 }
 
 //Copy one route to another
@@ -6269,11 +6267,10 @@ void copy_route(List* source , List * dest){
 	route_empty(dest);
 	
 	//copies the source
-	for(i=0 ; i<op_prg_list_size(source) ; i++)
-		{
-			elem = op_prg_list_access(source, i);
-			op_prg_list_insert(dest , elem, OPC_LISTPOS_TAIL);
-		}
+	for(i=0 ; i<op_prg_list_size(source) ; i++){
+		elem = op_prg_list_access(source, i);
+		op_prg_list_insert(dest , elem, OPC_LISTPOS_TAIL);
+	}
 }
 
 //add one route
@@ -6290,7 +6287,6 @@ int	route_length(List* route){
 	return(op_prg_list_size(route));
 }
 
-
 //computes shortest routes on the graph with the matrix G
 void compute_shortest_routes(List* routes[MAX_NB_NODES][MAX_NB_NODES] , short g[MAX_NB_NODES][MAX_NB_NODES] , int nb_nodes){
 	//Control
@@ -6302,18 +6298,18 @@ void compute_shortest_routes(List* routes[MAX_NB_NODES][MAX_NB_NODES] , short g[
 	
 	//intialization
 	for (i=0; i < nb_nodes ; i++)
-		for(j=0 ; j < nb_nodes ; j++)
-			{
-				if (i == j)
-					length[i][j] = 0;
-				else
-					length[i][j] = INFINITY;
-				
-				route_empty(routes[i][j]);
-				if (i == j)
-					add_route(routes[i][j] , stats_id_to_addresses[i]);
-			}
+		for(j=0 ; j < nb_nodes ; j++){
+			if (i == j)
+				length[i][j] = 0;
+			else
+				length[i][j] = INFINITY;
+			
+			route_empty(routes[i][j]);
+			if (i == j)
+				add_route(routes[i][j] , stats_id_to_addresses[i]);
+		}
 	
+
 	//For each source
 	for (s=0 ; s < nb_nodes ; s++)
 		{
@@ -6682,15 +6678,12 @@ void format_int_to_string(double src, char* dest, int nb_digits){
 }
 
 
-
-
 //returns TRUE if 'set' is a CDS of g
 Boolean is_a_cds(short g[MAX_NB_NODES][MAX_NB_NODES], short mcds_set[MAX_NB_NODES]){
-	char	msg[200];
+//	char	msg[200];
 	//Covering
 	short 	covering[MAX_NB_NODES];
 	//CDS
-	short 	cds[MAX_NB_NODES][MAX_NB_NODES];
 	List*	routes[MAX_NB_NODES][MAX_NB_NODES];
 	//Control
 	int		i , j;
@@ -6702,12 +6695,9 @@ Boolean is_a_cds(short g[MAX_NB_NODES][MAX_NB_NODES], short mcds_set[MAX_NB_NODE
 	
 	//Are the AP members of the MCDS ?
 	for (i=0 ; i<nb_total ; i++)
-		{
-			//if (stats_specificities[i] == AP)
-			//	printf("%d est AP\n", stats_id_to_addresses[i]);
-			if ((stats_specificities[i] == AP)  &&  (!mcds_set[i]))
+		if ((stats_specificities[i] == AP)  &&  (!mcds_set[i]))
 				return(OPC_FALSE);
-		}
+	//printf("AP part of the CDS\n");
 	
 	
 //-------  Is 'set' a covering ?   -------
@@ -6715,7 +6705,6 @@ Boolean is_a_cds(short g[MAX_NB_NODES][MAX_NB_NODES], short mcds_set[MAX_NB_NODE
 	//Initialization
 	for (i=0 ; i<nb_total ; i++)
 		covering[i] = mcds_set[i];
-		
 		
 	//Constructs the covering
 	for (i=0 ; i<nb_total ; i++)
@@ -6732,112 +6721,82 @@ Boolean is_a_cds(short g[MAX_NB_NODES][MAX_NB_NODES], short mcds_set[MAX_NB_NODE
 
 //-------  Is 'set' connected ?   -------
 	
-	//Copies the graph
-	for (i=0 ; i<nb_total ; i++)
-		for (j=0 ; j < nb_total ; j++)
-			cds[i][j] = g[i][j];
-	
-	
-	//Keeps only intersting information (improves the shortest routes computing speed)
-	for(i=0; i<nb_total ; i++)
-		if (!mcds_set[i])
-			for(j=0; j<nb_total ; j++)
-				{
-					cds[i][j] = OPC_FALSE;
-					cds[j][i] = OPC_FALSE;
-				}
 	
 	//Routes intialization
 	for (i=0 ; i < nb_total ; i++)
 		for(j=0 ; j < nb_total ; j++)
 			routes[i][j] 	= op_prg_list_create();
-	
-	//computes the shortest routes
-	compute_shortest_routes(routes , cds , nb_total);
 
+	//computes the shortest routes
+	compute_shortest_routes(routes , g , nb_total);
+	
 	//are all routes present ? (i.e. is the cds connected ?)
 	is_cds_connected = OPC_TRUE;
-	cluster_message("ROUTES:\n");
+	//printf("ROUTES:\n");
 	for (i=0 ; (i<nb_total) && (is_cds_connected) ; i++)
-		for(j=0 ; (j<nb_total) && (is_cds_connected)  ; j++)
-			{			
-				route_to_str(routes[i][j] , msg);
-				sprintf(msg , "%\n", msg);
-				cluster_message(msg);
-				if (  (mcds_set[i])   &&   (mcds_set[j])   &&   (op_prg_list_size(routes[i][j])==0)  )
-					is_cds_connected = OPC_FALSE;
-			}
+		for(j=0 ; (j<nb_total) && (is_cds_connected)  ; j++){			
+			//route_to_str(routes[i][j] , msg);
+			//printf("%\n", msg);
+			if (  (mcds_set[i])   &&   (mcds_set[j])   &&   (op_prg_list_size(routes[i][j])==0)  )
+				is_cds_connected = OPC_FALSE;
+		}
 		
 	//Routes Destruction
 	for (i=0 ; i < nb_total ; i++)
-		for(j=0 ; j < nb_total ; j++)
-			{
+		for(j=0 ; j < nb_total ; j++){
 				route_empty(routes[i][j]);
 				op_prg_mem_free(routes[i][j]);
 			}			
-	
-	if (is_cds_connected)
-		{
-			cluster_message("SET : ");
-			for(i=0; i < nb_total; i++)
-				if (mcds_set[i])
-					{
-						sprintf(msg, "%d ", stats_id_to_addresses[i]);
-						cluster_message(msg);
-					}
-			cluster_message("\n");		
-		}
-	
 	//return the final result
 	return(is_cds_connected);
-	
-	
 }
 
 
-
+//convert an array of ints in a string
+char* tab_int_to_str(short mcds_set[MAX_NB_NODES], int nb_nodes, char *msg){
+	int		i;
+	
+	sprintf(msg, "");
+	for(i=0; i < nb_nodes ; i++)
+		if (mcds_set[i])
+			sprintf(msg , "%s %d", msg , stats_id_to_addresses[i]);
+	return(msg);
+}
 
 //Computes all possible set 'set' adding nb_doms_to_add to 'set', and returns if 'set' is a MCDS ?
 Boolean compute_mcds(short g[MAX_NB_NODES][MAX_NB_NODES] , short mcds_set[MAX_NB_NODES], short start  , short nb_doms_to_add){
 //	int		i;
-
+	
 	//The set is chosen
-	if (nb_doms_to_add == 0)
-		{		
+	if (nb_doms_to_add == 0){		
 			//Is 'set' a CDS ?
 			if (is_a_cds(g , mcds_set))
-				return(OPC_TRUE);	
+				return(OPC_TRUE);
 			else
 				return(OPC_FALSE);
 		}
 	//The set is not complete -> computes all possible sets
 	else
 		{
-			/*			for(i=1; i < nb_total; i++)
-				{
-					printf("%d ", set[i]);					
-				}
-			printf("\n");
-			*/
-		
-
 			//We take this node in the set
 			mcds_set[start] = OPC_TRUE;
 			if (nb_doms_to_add-1 <= (nb_total - (start+1) + 1))
-				if (    compute_mcds(g , mcds_set , start+1 , nb_doms_to_add-1)   )
+				if (compute_mcds(g , mcds_set , start+1 , nb_doms_to_add-1)   )
 					return(OPC_TRUE);
 			
 			//We don't take this node in the set (except if the node is an AP)
 			mcds_set[start] = OPC_FALSE;
-			if (stats_specificities[start] != AP)
-				if (  (nb_doms_to_add-1) <= nb_total - (start+1) + 1) 
-					if ( compute_mcds(g , mcds_set , start+1 , nb_doms_to_add)   )
-						return(OPC_TRUE); 
-			
+			if (stats_specificities[start] == AP)
+				return(OPC_FALSE);			
+			//We have more nodes to add than we already have
+			if ((nb_doms_to_add-1) > nb_total - (start+1) + 1)
+				return(OPC_FALSE);	
+			//MCDS !
+			if ( compute_mcds(g , mcds_set , start+1 , nb_doms_to_add)   )
+				return(OPC_TRUE);			
 			//No possible set with this 'set'
 			return(OPC_FALSE);			
 		}
-	
 }
 
 
@@ -6845,22 +6804,19 @@ Boolean compute_mcds(short g[MAX_NB_NODES][MAX_NB_NODES] , short mcds_set[MAX_NB
 //Returns the cardinality of the exact MCDS (and a MCDS : MCDS[i]=1 if the ith node is member of the MCDS)
 int compute_mcds_graph(short g[MAX_NB_NODES][MAX_NB_NODES], short mcds_set[MAX_NB_NODES]){
 	short	i;
-	short	card_min;
 	
 	//Initialization
-	card_min = INFINITY;
 	for(i=0 ; i<nb_total ; i++)
 		mcds_set[i] = OPC_FALSE;
 	
-	
 	//For a cardinality 1 -> nb_total-1   (a MCDS contains at most n-1 nodes, and at least one node)
-	for(i=1 ; (i<nb_total) && (card_min==INFINITY) ; i++)
-		{
+	for(i=1 ; i<nb_total ; i++){
+	
 			if (compute_mcds(g, mcds_set, 0 , i))
-				card_min = i;
+				return(i);
 		}
 	
-	return(card_min);	
+	return(OPC_INT_INFINITY);	
 }
 
 
@@ -6915,6 +6871,7 @@ Boolean					is_global_stats_collect_required;
 Boolean					is_quick_stats_collect_required;
 //Control variables
 char					msg[1500];
+char					msg2[100];
 char					filename[150];
 int						i , j;
 int						int_value;
@@ -6937,7 +6894,7 @@ int						nb_cds_connected_nodes_strict;
 int						nb_cds_connected_nodes_large;
 List*					cds_routes	[MAX_NB_NODES][MAX_NB_NODES];
 short					cds_graph	[MAX_NB_NODES][MAX_NB_NODES];
-//short					mcds_set	[MAX_NB_NODES];
+short					mcds_set	[MAX_NB_NODES];
 short					g			[MAX_NB_NODES][MAX_NB_NODES];
 Boolean					is_node_connected_to_ap;
 //Simulation of a node failure
@@ -6951,6 +6908,8 @@ cds						*failed_cds;
 char					stab_failure_type_str[30];
 double					x_pos , y_pos , XMAX , YMAX;
 neigh_cell				**failed_neighbour_table;
+//MCDS stats
+double					x_max , y_max;
 
 	//---------------------------------------------
 	//  Global infos on Nodes (position, state...)
@@ -7285,28 +7244,25 @@ neigh_cell				**failed_neighbour_table;
 			sprintf(msg,"%.2lf" , op_sim_time());
 				
 		//CDS
-			sprintf(msg,"%s		%d", 		msg , 	nb_dominators);						
-			//if (nb_dominators > 0)
-			//	sprintf(msg,"%s		%d", 	msg , 	compute_mcds_graph(g, mcds_set));
-			//else
-			//	sprintf(msg,"%s		%d", 	msg , 	0);
-			sprintf(msg,"%s		%.1lf", 	msg , 	100 * tmp_cds_connexity_strict);
-			sprintf(msg,"%s		%.1lf", 	msg , 	100 * tmp_cds_connexity_large);
+			sprintf(msg,"%s		%d", 	msg , 	nb_dominators);			
+			sprintf(msg,"%s	%.1lf", 	msg , 	100 * tmp_cds_connexity_strict);
+			sprintf(msg,"%s/%.1lf", 	msg , 	100 * tmp_cds_connexity_large);
 		
 			
 			
 		//Clusters
 			//Nb clusterheads
 			sprintf(msg,"%s		%d",		msg , 	nb_clusterheads);					
-			sprintf(msg,"%s		%.1lf", 	msg , 	100*stats_clusterhead_connection/(float)(nb_total-nb_dead_nodes) );
+			sprintf(msg,"%s	%.1lf", 	msg , 	100*stats_clusterhead_connection/(float)(nb_total-nb_dead_nodes) );
 					
 		//General	
-			sprintf(msg,"%s			%.2lf", msg , 	tmp_average_degree 		/ (float)(nb_total-nb_dead_nodes));
+			sprintf(msg,"%s		%.2lf", msg , 	tmp_average_degree 		/ (float)(nb_total-nb_dead_nodes));
 			sprintf(msg,"%s		%.2lf", 	msg , 	tmp_average_nb_fathers  / (float)(nb_dominators-nb_aps));
-			sprintf(msg,"%s			%d",	msg ,	tmp_average_nb_cds_connectors);
-			sprintf(msg,"%s			%s",	msg ,	stats_list_clusterheads);
-			sprintf(msg,"%s			%s",	msg ,	stats_list_dominators);
-			sprintf(msg,"%s			%s\n",	msg,	stats_list_cds_connectors);
+			sprintf(msg,"%s		%d",	msg ,	tmp_average_nb_cds_connectors);
+			//sprintf(msg,"%s		%s",	msg ,	stats_list_clusterheads);
+			//sprintf(msg,"%s		%s",	msg ,	stats_list_dominators);
+			//sprintf(msg,"%s		%s",	msg,	stats_list_cds_connectors);
+			sprintf(msg, "%s\n", msg);
 			
 			//Purge the lists
 			sprintf(stats_list_clusterheads		,"");
@@ -7528,6 +7484,42 @@ neigh_cell				**failed_neighbour_table;
 					sprintf(msg,"%s 	0		0		0		0		0		0	|",msg);
 				}
 			sprintf(msg,"%s \n",msg);				
+
+			
+			//------------------------------------
+			//	  MCDS  CARDINALITY COMPARISON
+			//------------------------------------
+			
+			
+			if ((nb_dominators > 0) && (MCDS_COMPUTE) && (100 * tmp_cds_connexity_strict == 100)){
+				
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE , "X_MAX" , &x_max);
+				op_ima_sim_attr_get(OPC_IMA_DOUBLE , "Y_MAX" , &y_max); 
+
+			
+			   	//STATS
+				sprintf(filename,"results/%smcds_stats%s.txt", prefix_results_file , suffix_results_file);
+				fichier = fopen(filename,"a");
+				
+				fprintf(fichier , "---------------------------- Parameters -----------------------\n");
+				fprintf(fichier , "Nb Nodes							:	%d\n",				nb_total);
+				fprintf(fichier , "X_MAX								:	%f\n",			x_max);
+				fprintf(fichier , "Y_MAX								:	%f\n",			y_max);
+				fprintf(fichier , "Duration (seconds)					:	%f\n",			op_sim_time());
+				fprintf(fichier , "CDS Radius							:	%d\n",			k_cds);
+				fprintf(fichier , "Cluster Radius						:	%d\n",			k_cluster);
+				fprintf(fichier , "CDS Maintenance Type					:	%d\n",			cds_algos_type);
+				fprintf(fichier , "Clusters Maintenance Type				:	%d\n",		cluster_algos_type);
+				fprintf(fichier ,"\n\n");
+				
+				
+				fprintf(fichier , "\n-------------------------   MCDS / CDCL Cardinalities  ----------------------------------\n");
+				fprintf(fichier , "MCDS cardinality						:	%d\n", 			compute_mcds_graph(g, mcds_set));
+				fprintf(fichier , "MCDS								:	%s\n", 				tab_int_to_str(mcds_set , nb_total , msg2));
+				fprintf(fichier , "CDCL cardinality						:	%d\n", 			nb_dominators);
+				fclose(fichier);
+				op_sim_end("MCDS computed and CDCL connected" , "" , "" , "");
+			}
 
 			
 			//------------------------------------
@@ -10055,211 +10047,6 @@ int get_state_wu_li(){
 
 
 
-/*
-
-//Constructs the set of higher_weight nodes + its covering
-void construct_higher_weight_nodes(List* higher_nodes , short mcds_set[MAX_NB_NODES] , short g[MAX_NB_NODES][MAX_NB_NODES], List* covering){
-	neigh_cell	*ptr;
-	neigh_min	*neigh_list;
-	int			i;
-	//char		msg[1000];
-	
-	//Search the root
-	ptr = neighbour_table;
-	while (ptr!=NULL)
-		{
-			//adds the links in the graph
-			g[  stats_addresses_to_id[ptr->address]  ]  [ my_stat_id  ] = OPC_TRUE;
-			
-			if ((ptr->hops <= k_cds) && (ptr->bidirect) && (ptr->weight > my_weight.value))
-				{
-					//I add the node in the CDS, and only this node in the covering set 
-					add_int_in_list(ptr->address 	, higher_nodes);
-					mcds_set[ stats_addresses_to_id[ptr->address]] = OPC_TRUE;
-					construct_covering(ptr->address , covering , k_cds);
-					
-					//Constructs the associated graph
-					for (i=0 ; i<op_prg_list_size(ptr->neighbors) ; i++)
-						{
-							neigh_list = op_prg_list_access(ptr->neighbors , i);
-							g[  stats_addresses_to_id[ptr->address]  ]  [  stats_addresses_to_id[neigh_list->address]  ] = OPC_TRUE;
-						}
-					
-				}
-			ptr = ptr->next;
-		}
-}
-
-//Is covering a complete covering of all my neighbors ?
-Boolean is_a_complete_covering(List* covering){
-	char		msg[200];
-	neigh_cell	*ptr;
-	
-	ptr= neighbour_table;
-	while(ptr != NULL)
-		{
-			if ((ptr->bidirect) && (ptr->hops<=k_cds) && (!is_int_in_list(covering, ptr->address)))
-				{
-					if (DEBUG>LOW)
-						{
-							sprintf(msg, "%d not covered\n", ptr->address);
-							cluster_message(msg);
-						}
-					return(OPC_FALSE);
-				}
-			ptr = ptr->next;
-		}
-	return(OPC_TRUE);
-}
-
-
-
-//Is a connected set ?
-Boolean is_a_connected_set(List* set, short g[MAX_NB_NODES][MAX_NB_NODES]){
-	List	*routes[MAX_NB_NODES][MAX_NB_NODES];
-	int		i , j;
-	char	msg[200];
-		
-	//Routes intialization
-	for (i=0 ; i < nb_total ; i++)
-		for(j=0 ; j < nb_total ; j++)
-			routes[i][j] 	= op_prg_list_create();
-	
-	//List of CDS Shortest Routes
-	compute_shortest_routes(routes , g , nb_total);
-
-	if (DEBUG>LOW)
-		for(i=0; i<nb_total; i++)
-			{
-				for(j=0; j<nb_total; j++)
-					{
-						route_to_str(routes[i][j] , msg);
-						cluster_message(msg);
-					}
-				cluster_message("\n");
-			}			
-	
-	//Is all the routes present ?
-	for(i=0; i<nb_total; i++)
-		for(j=0; j<nb_total; j++)
-			if ((i!=j) && (is_int_in_list(set , i)) && (is_int_in_list(set , j)) && (route_length(routes[i][j]) == 0))
-				return(OPC_FALSE);
-		
-	//All the routes are present
-	return(OPC_TRUE);
-}
-
-
-
-//Return my state : dominator or dominatee
-int get_state_wu_li2(){
-	List	*higher_weight_nodes;
-	List	*covering;
-	int		root;
-	char	msg[200];
-	short	g[MAX_NB_NODES][MAX_NB_NODES];
-	short	mcds_set[MAX_NB_NODES];
-	int		i , j;
-	
-	if (DEBUG>HIGH)
-		print_neighbour_table();
-	
-	//initialization
-	higher_weight_nodes = op_prg_list_create();
-	covering 			= op_prg_list_create();
-	for(i=0; i<nb_total; i++)
-		{
-			for(j=0; j<nb_total; j++)
-				g[i][j] = OPC_FALSE;
-			mcds_set[i] = OPC_FALSE;
-		}
-	
-	if (DEBUG>LOW)
-		{
-			sprintf(msg, "CDS -> computes the new state at %f (my weight = %d)\n", op_sim_time() , my_weight.value);
-			cluster_message(msg);
-		}
-	
-	//Constructs the list of 1-neighborhood of higher weight + their covering
-	construct_higher_weight_nodes(higher_weight_nodes , mcds_set , g ,covering);
-	
-	
-	//Gets a symetric graph
-	for(i=0 ; i<MAX_NB_NODES ; i++)
-		for (j=0 ; j<MAX_NB_NODES ; j++)
-			if (g[i][j] > g[j][i])
-				g[j][i] = g[i][j];
-	
-	//debug
-	if (DEBUG>LOW)
-		{
-			sprintf(msg, "CDS obtained (root %d): %s\n", root , int_list_to_str(higher_weight_nodes));
-			cluster_message(msg);
-			sprintf(msg, "Covering obtained : %s\n", int_list_to_str(covering));	
-			cluster_message(msg);
-		}		
-	
-	//The nodes are not a complete covering -> End
-	if (!is_a_complete_covering(covering))
-		{
-			if (DEBUG>LOW)
-				{
-					sprintf(msg, "not a complete covering\n\n\n");
-					cluster_message(msg);
-				}
-			//Lists destruction
-			empty_list(higher_weight_nodes);
-			op_prg_mem_free(higher_weight_nodes);
-			empty_list(covering);
-			op_prg_mem_free(covering);
-			return(DOMINATOR);		
-		}
-	
-	//The nodes are not a complete covering -> End
-	//if (!is_a_connected_set(higher_weight_nodes , g))
-	if (is_a_cds( g, mcds_set))
-		{
-			if (DEBUG>LOW)
-				{
-					sprintf(msg, "not a connected set\n\n\n");
-					cluster_message(msg);
-				}
-			
-			//Lists destruction
-			empty_list(higher_weight_nodes);
-			op_prg_mem_free(higher_weight_nodes);
-			empty_list(covering);
-			op_prg_mem_free(covering);
-			return(DOMINATOR);		
-		}
-
-	if (DEBUG >LOW)
-		{
-			sprintf(msg, "whole covering and connected\n");
-			cluster_message(msg);
-		}
-			   	
-	//The nodes are a complete covering -> End
-	empty_list(higher_weight_nodes);
-	op_prg_mem_free(higher_weight_nodes);
-	empty_list(covering);
-	op_prg_mem_free(covering);
-	return(DOMINATEE);		
-}
-
-
-
-
-
-
-*/
-
-
-
-
-
-
-
 
 
 
@@ -12756,7 +12543,7 @@ cdcl_process_cluster_cds_process (void)
 								fichier = fopen(str,"w");
 								fprintf(fichier,"#Instantaneous Performances Statistics of our constuctions\n");
 								fprintf(fichier,"#NB : CH=clusterhead - DOM=Dominator - dom=Dominatee\n");
-								fprintf(fichier,"#time		Nb DOM	CDS_strict	CDS_large	Nb CH		CH Connexity	Degree	2nd Parents		Connectors		List CH			List DOM\n");
+								fprintf(fichier,"#time		Nb DOM	CDS_strict/large	Nb CH		CH Connexity	Degree	2nd Parents		Connectors		List CH			List DOM\n");
 								fclose(fichier);
 							}
 				

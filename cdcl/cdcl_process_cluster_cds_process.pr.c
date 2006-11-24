@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4460AB9C 4460AB9C 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45138D88 45138D88 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -51,7 +51,7 @@ FSM_EXT_DECS
 #define		NORMAL_DEBUG				1
 #define		STATS_DEBUG					1
 
-#define		MCDS_COMPUTE				1
+#define		MCDS_COMPUTE				0
 #define		DEBUG_INSTANTANEOUS			0
 #define		DEBUG_NETWORK_CTRL			0
 #define		DEBUG_CPLEX					0
@@ -97,7 +97,7 @@ FSM_EXT_DECS
 #define		INTERVALL_UPDATE_TABLE		1.0
 
 //I generate a figure of cds and clusters every x seconds
-#define		INTERVALL_FIGURES			0.5
+#define		INTERVALL_FIGURES			5
 
 
 //----------------------------------------------------------------------

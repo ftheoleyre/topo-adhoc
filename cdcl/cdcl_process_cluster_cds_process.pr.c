@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45138D88 45138D88 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4566E320 4566E320 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -3491,9 +3491,6 @@ void die(){
 				}
 			op_intrpt_schedule_self(op_sim_time(),DIE_CODE);
 			
-			//Change state -> updates the Stats about Energy
-			//update_state_cds(NOTHING,Stathandle stat_local,Stathandle stat_global);
-			
 			
 			if (my_cds.state == DOMINATOR)
 				{
@@ -4243,8 +4240,7 @@ void update_state_cds(int state){
 		stats_dominatee_dominator_changes++;
 	else if ((my_cds.state == DOMINATOR) && (state == DOMINATEE))
 		stats_dominator_dominatee_changes++;
-	else
-		{
+	else if (my_cds.state != state)	{
 			sprintf(msg, "error : a node (%d) changed its cds-state from %d to %d\n", my_address , my_cds.state , state);
 			op_sim_end(msg, "" , "" , "");
 		}
@@ -4340,43 +4336,45 @@ void update_state_cds(int state){
 		}
 	
 	
-	//OUR NEW STATE
-	my_cds.state = state;
+	if (my_cds.state != state){
+		//OUR NEW STATE
+		my_cds.state = state;
 
-	//We must advertise our neighbours of our new state
-	if (cds_algos_type != WU_LI)
-		send_new_state(state);
+		//We must advertise our neighbours of our new state
+		if (cds_algos_type != WU_LI)
+			send_new_state(state);
 	
-	//Update the entry of the cds_table
-	update_informations_cds(my_address , my_cds.father , my_clusterhead.address , state , my_weight.value);
+		//Update the entry of the cds_table
+		update_informations_cds(my_address , my_cds.father , my_clusterhead.address , state , my_weight.value);
 	
-	//We have no verification of highest weight that is scheduled
-	if ((state == DOMINATOR) || (state==DOMINATEE))
-		my_cds.cds_intrpt_end = 0;
+		//We have no verification of highest weight that is scheduled
+		if ((state == DOMINATOR) || (state==DOMINATEE))
+			my_cds.cds_intrpt_end = 0;
 	
-	//schedule the next verification of "I am the node with the hisghest weight" (->DOMINATOR)						
-	if ((!my_cds.cds_intrpt_end) && (state==ACTIVE))
-		{
-			op_intrpt_schedule_self(op_sim_time() + timeout_construct_cds , CONSTRUCT_CDS_CODE); 
-			my_cds.cds_intrpt_end = 1;
-		}	
+		//schedule the next verification of "I am the node with the hisghest weight" (->DOMINATOR)						
+		if ((!my_cds.cds_intrpt_end) && (state==ACTIVE))
+			{
+				op_intrpt_schedule_self(op_sim_time() + timeout_construct_cds , CONSTRUCT_CDS_CODE); 
+				my_cds.cds_intrpt_end = 1;
+		   	}	
 	
 	
-	//We schedule the maintenance : our integration in the cds will finish when the principal dominator will have sent a join message and the other dominators will have answsered
-	if	((!my_cds.is_maintenance_scheduled) && (cds_algos_type != WU_LI))
-		{
-			//It I am dominatee, the cds-maintenance process is not hurried
-			if (my_cds.state==DOMINATEE)
-				{
-					my_cds.is_maintenance_scheduled = 1;
-					op_intrpt_schedule_self(op_sim_time()+ (2*k_cds+1)* 2 * (0.4) + INTERVALL_HELLO ,CDS_MAINTENANCE_CODE);
-				}
-			//If I am a dominator, I schedule the next cds_maintenance to choose a father (and eventually send a join-reverse) --> must be quick
-			else if (my_cds.state==DOMINATOR)
-				{
-					my_cds.is_maintenance_scheduled = 1;
-					op_intrpt_schedule_self(op_sim_time()+ 0.5*(2*k_cds+1)*(0.1) ,CDS_MAINTENANCE_CODE);
-				}				
+		//We schedule the maintenance : our integration in the cds will finish when the principal dominator will have sent a join message and the other dominators will have answsered
+		if	((!my_cds.is_maintenance_scheduled) && (cds_algos_type != WU_LI))
+			{
+				//It I am dominatee, the cds-maintenance process is not hurried
+				if (my_cds.state==DOMINATEE)
+					{
+						my_cds.is_maintenance_scheduled = 1;
+						op_intrpt_schedule_self(op_sim_time()+ (2*k_cds+1)* 2 * (0.4) + INTERVALL_HELLO ,CDS_MAINTENANCE_CODE);
+					}
+				//If I am a dominator, I schedule the next cds_maintenance to choose a father (and eventually send a join-reverse) --> must be quick
+				else if (my_cds.state==DOMINATOR)
+					{
+						my_cds.is_maintenance_scheduled = 1;
+						op_intrpt_schedule_self(op_sim_time()+ 0.5*(2*k_cds+1)*(0.1) ,CDS_MAINTENANCE_CODE);
+				   	}
+			}
 		}
 }
 
@@ -5335,7 +5333,8 @@ void reinit_cds_infos(){
 	
 	//CDS Infos
 	change_father(ZERO , ZERO , ZERO);
-	update_state_cds(IDLE);
+	if (my_cds.state != IDLE)
+		update_state_cds(IDLE);
 	for(i=0;i<KCDS_MAX;i++) {my_cds.join_already_forwarded[i] = 0;}
 	my_cds.sons 		= NULL;
 	my_cds.dominatees 	= NULL;

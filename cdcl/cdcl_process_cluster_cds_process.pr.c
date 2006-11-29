@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 4566E320 4566E320 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cdcl_process_cluster_cds_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 456D886F 456D886F 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -77,7 +77,7 @@ FSM_EXT_DECS
 
 //	TIMEOUTS	
 //Hello
-#define		TIMEOUT_HELLO				3.01
+#define		TIMEOUT_HELLO				5
 //Cds
 #define		TIMEOUT_RELAY_FATHER		2.01
 #define		TIMEOUT_AP_HELLO			2.01
@@ -97,7 +97,7 @@ FSM_EXT_DECS
 #define		INTERVALL_UPDATE_TABLE		1.0
 
 //I generate a figure of cds and clusters every x seconds
-#define		INTERVALL_FIGURES			5
+#define		INTERVALL_FIGURES			60
 
 
 //----------------------------------------------------------------------
@@ -113,10 +113,12 @@ FSM_EXT_DECS
 #define		MAX_AP_NEIGH_IN_HELLO		2
 #define		MAX_GW_FIELDS_IN_HELLO		30			//Exact Maximum Number
 
-/*	For Packets	*/
+//	For Packets
 #define		NB_RELAY_FIELDS				8
 
-
+// Stability
+//#define		MAX_STABILITY				10
+#define		MIN_STABILITY				2
 
 //----------------------------------------------------------------------
 //				     		ENERGY		
@@ -1426,7 +1428,6 @@ Packet* hello_packet_generate (void){
 							op_pk_nfd_set(pkptr , hello_fields_names[i].weight		, ptr->weight);	
 							op_pk_nfd_set(pkptr , hello_fields_names[i].state		, ptr->state);	
 							op_pk_nfd_set(pkptr , hello_fields_names[i].bidirect	, ptr->bidirect);
-							//op_pk_nfd_set(pkptr , hello_fields_names[i].clusterhead	, ptr->clusterhead);
 						}
 					i++;
 				}
@@ -1454,7 +1455,6 @@ Packet* hello_packet_generate (void){
 					op_pk_nfd_strip(pkptr , hello_fields_names[j].weight);
 					op_pk_nfd_strip(pkptr , hello_fields_names[j].state);
 					op_pk_nfd_strip(pkptr , hello_fields_names[j].bidirect);
-					//op_pk_nfd_strip(pkptr , hello_fields_names[j].clusterhead);
 				}
 		break;
 	}
@@ -1630,8 +1630,12 @@ void update_table_neighbours (Packet* pkptr , short ttl_for_pk) {
 							ptr->hops 				= hops_temp;
 							ptr->timeout 			= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;	//This node timeouts in TIMEOUT_HELLO seconds
 							ptr->relay				= relay_temp;
-							ptr->bidirect 			= bidirect_temp;
+							if (ptr->hops > 1)
+								ptr->stability			= TIMEOUT_HELLO;
+							else
+								ptr->stability			= 1;
 							
+							ptr->bidirect 			= bidirect_temp && (ptr->stability > MIN_STABILITY);							
 							ptr->weight 			= weight_temp;
 							ptr->sleep				= 0;
 								
@@ -1721,7 +1725,8 @@ void update_table_neighbours (Packet* pkptr , short ttl_for_pk) {
 					//- The hops declared by the sender are lower that the hops in our table
 					//- The timeout is near and we must find another way in order to avoid the deletion of this entry
 					//else if ((ptr != NULL) && (((addr_temp != my_address) && (ptr->hops >= hops_temp))  ||  (ptr->timeout < op_sim_time()+INTERVALL_HELLO)))
-					else if ((ptr != NULL) && (addr_temp != my_address) &&   ((ptr->hops >= hops_temp) || (ptr->timeout-INTERVALL_HELLO*TIMEOUT_HELLO+INTERVALL_HELLO < op_sim_time() ))  )
+					else if ((ptr != NULL) && (addr_temp != my_address) &&   ((ptr->hops >= hops_temp) || (ptr->stability <= MIN_STABILITY ))  )
+					//else if ((ptr != NULL) && (addr_temp != my_address) &&   ((ptr->hops >= hops_temp) || (ptr->timeout-INTERVALL_HELLO*TIMEOUT_HELLO+INTERVALL_HELLO < op_sim_time() ))  )
 					//else if ((ptr != NULL) && (addr_temp != my_address))    // (( && (ptr->hops >= hops_temp))  ||  (ptr->timeout < op_sim_time()+INTERVALL_HELLO)))
 						{									
 							if (ptr->hops > hops_temp)
@@ -1736,25 +1741,31 @@ void update_table_neighbours (Packet* pkptr , short ttl_for_pk) {
 							if ((ptr->hops >= hops_temp) || (ptr->timeout < op_sim_time()+INTERVALL_HELLO))
 								{
 									ptr->hops 				= hops_temp;
-									ptr->timeout 			= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;	//This node timeouts in TIMEOUT_HELLO seconds
+									ptr->timeout 			= op_sim_time() + INTERVALL_HELLO;	//This node timeouts in TIMEOUT_HELLO seconds
 									ptr->relay				= relay_temp;
-									ptr->bidirect 			= bidirect_temp;
+									if ((ptr->stability < (int) TIMEOUT_HELLO) && (ptr->hops == 1))
+										ptr->stability++;
+									else if (ptr->hops > 1)
+										ptr->stability = TIMEOUT_HELLO;
+										
+									ptr->bidirect 			= bidirect_temp && (ptr->stability > MIN_STABILITY);
 							
+									
 									//List of neighbors
-									if (i==0)
-										{
-											ptr->neighbors 			= create_neighbors_list(pkptr);//create_list_from_pk(pkptr);
-											ptr->neighbors_timeout 	= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;
+									if (i==0){
+											ptr->neighbors 			= create_neighbors_list(pkptr);
+											ptr->neighbors_timeout 	= op_sim_time() + TIMEOUT_HELLO * INTERVALL_HELLO;
 										}
 									else if (ptr->neighbors_timeout < op_sim_time())
 										empty_list(ptr->neighbors);							
 
+									
 									//If the field corresponds to the packet headers (or if we have a Ktable)
 									if ((i==0) || (hello_method==HELLO_METHOD_KTABLE))
 										{
 											ptr->father 			= father_temp;
 											ptr->clusterhead		= clusterhead_temp;
-											ptr->clusterhead_timeout= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;
+											ptr->clusterhead_timeout= op_sim_time() + TIMEOUT_HELLO * INTERVALL_HELLO;
 											if (ptr->clusterhead != 0)
 												ptr->cluster_init_flag	= 1;
 											
@@ -1802,7 +1813,7 @@ void update_table_neighbours (Packet* pkptr , short ttl_for_pk) {
 							if (i==0)
 								{
 									fill_gw_list_with_hello_pk(pkptr , ptr->gw_list);
-									ptr->gw_timeout = op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;
+									ptr->gw_timeout = op_sim_time() + TIMEOUT_HELLO * INTERVALL_HELLO;
 								}
 							else if (ptr->gw_timeout < op_sim_time())
 								empty_gw_list(ptr->gw_list);
@@ -1810,7 +1821,7 @@ void update_table_neighbours (Packet* pkptr , short ttl_for_pk) {
 							//DEBUG Infos
 							if (DEBUG>MAX)
 								{
-									sprintf(msg,"%d updated (%f) in NEIGH_TABLE : weight=%d, hops=%d, state=%d, father=%d, father_hops=%d, ch=%d (%d/%d), originator=%d, relay=%d, bidirect=%d, timeout=%f\n", ptr->address , op_sim_time() , ptr->weight , ptr->hops , ptr->state , ptr->father, ptr->father_hops , ptr->clusterhead, ptr->clusterhead_hops, ptr->cluster_init_flag, src_temp , ptr->relay , ptr->bidirect , op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO);
+									sprintf(msg,"%d updated (%f) in NEIGH_TABLE : weight=%d, hops=%d, state=%d, father=%d, father_hops=%d, ch=%d (%d/%d), originator=%d, relay=%d, bidirect=%d, timeout=%f\n", ptr->address , op_sim_time() , ptr->weight , ptr->hops , ptr->state , ptr->father, ptr->father_hops , ptr->clusterhead, ptr->clusterhead_hops, ptr->cluster_init_flag, src_temp , ptr->relay , ptr->bidirect , ptr->timeout);
 									cluster_message(msg);
 								}
 
@@ -2393,9 +2404,20 @@ void update_tables(){
 						ptr_neighbour->clusterhead 		 	= ptr_neighbour->address;
 
 					}
-					
+				   
+				//This neighbor has timeouted
 				if ((ptr_neighbour->timeout < actual_time) && (ptr_neighbour->address != my_address))
-					{
+					
+					//Decrements the stability metric (one hello was missed)
+					if (ptr_neighbour->stability > 1){
+						ptr_neighbour->timeout += ptr_neighbour->interval_hello;
+						ptr_neighbour->stability --;
+						if (ptr_neighbour-> stability < MIN_STABILITY)
+							ptr_neighbour->bidirect = OPC_FALSE;
+					}
+				
+					//The stability is null, we must delete this entry !
+					else{
 						if ((ptr_neighbour->hops==1) && (ptr_neighbour->bidirect) && (op_sim_time() > TIME_BEGIN_TOPO_STATS))
 							nb_chgts_real_topo++;
 						if (ptr_neighbour->bidirect)
@@ -2561,7 +2583,10 @@ int	is_one_valid_neighbour(int addr, short hops_max){
 			ptr = ptr->next;
 		}
 	//I can miss one hello, not 2. 
-	return ((ptr != NULL)&&(ptr->hops<=hops_max)&&(ptr->timeout-TIMEOUT_HELLO*INTERVALL_HELLO>op_sim_time()-2.01*INTERVALL_HELLO));
+	//return ((ptr != NULL) && (ptr->hops<=hops_max) && (ptr->timeout-TIMEOUT_HELLO*INTERVALL_HELLO>op_sim_time()-2.01*INTERVALL_HELLO));
+	
+	//The stability must exceeds one threshold
+	return ((ptr != NULL) && (ptr->hops<=hops_max));// && (ptr->stability >= MIN_STABILITY));
 }
 
 //Return 1 if addr is this address corresponds to a father or son that exists (with a valid hello entry)
@@ -2579,7 +2604,10 @@ int	is_one_valid_father_or_son(int addr){
 			ptr = ptr->next;
 		}
 	//I can miss one hello, not 2. 
-	return ((ptr != NULL)&&(ptr->hops==1)&&(ptr->timeout-TIMEOUT_HELLO*INTERVALL_HELLO>op_sim_time()-2.1*INTERVALL_HELLO));
+	//return ((ptr != NULL)&&(ptr->hops==1)&&(ptr->timeout-TIMEOUT_HELLO*INTERVALL_HELLO>op_sim_time()-2.1*INTERVALL_HELLO));
+	
+	//The stability must exceeds one threshold
+	return ((ptr != NULL) && (ptr->hops==1));// && (ptr->stability >= MIN_STABILITY));
 }	
 	
 	
@@ -3368,7 +3396,8 @@ Boolean must_sleep(){
 				++my_degree;
 			
 			//If I have the highest weight in my neighborhood, I have chances to have much energy
-			if ((ptr_neigh->hops == 1)&&(ptr_neigh->bidirect)&&(ptr_neigh->weight < my_weight.value)&&(!ptr_neigh->sleep)&&(ptr_neigh->timeout > op_sim_time()+TIMEOUT_HELLO-INTERVALL_HELLO-0.2))
+			//if ((ptr_neigh->hops == 1)&&(ptr_neigh->bidirect)&&(ptr_neigh->weight < my_weight.value)&&(!ptr_neigh->sleep)&&(ptr_neigh->timeout > op_sim_time()+TIMEOUT_HELLO-INTERVALL_HELLO-0.2))
+			if ((ptr_neigh->hops == 1) && (ptr_neigh->bidirect) && (ptr_neigh->weight < my_weight.value) && (!ptr_neigh->sleep))// && (ptr_neigh->stability >= MIN_STABILITY))
 				penalty++;
 			
 			//We have a nothing neighbor
@@ -9399,205 +9428,6 @@ void send_timeout_ack_pk(int *arg, int code){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-/*-----------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------
-
-
-
-//													WU AND LI
-
-
-
------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------*/
-
-
-
-
-
-/*-----------------------------------------------------------------------------------------------
-
-								CDS of WU and LI (based on k-Neighborhood knowledge)
-
-----------------------------------------------------------------------------------------------*/
-/*
-
-
-
-//Empties a list
-void empty_list(List* ll){
-	void	*elem;
-	
-	while(op_prg_list_size(ll) > 0)
-		{
-			elem = op_prg_list_remove(ll , OPC_LISTPOS_TAIL);
-			op_prg_mem_free(elem);
-		}	
-}
-
-
-//deletes timeouted entries
-void update_neighbors_table_wu(){
-	int			i;
-	neigh_wu	*neigh;
-	
-	for(i=0 ; i<op_prg_list_size(neighbor_table_wu_li) ; i++)
-		{
-			neigh = op_prg_list_access(neighbor_table_wu_li , i);
-			if (neigh->timeout < op_sim_time())
-				{
-					empty_list(neigh->neighbors);
-					op_prg_mem_free(neigh->neighbors);
-					op_prg_list_remove(neighbor_table_wu_li , i);
-					op_prg_mem_free(neigh);
-					i--;				
-				}
-		}	
-}
-
-
-//update the neighbor_table
-void update_neighbor_wu(int addr , int weight , int hops , Boolean bidirect , List *neighbors){
-	//Neighbor Table
-	neigh_wu	*neigh;
-	int			i;
-	char		msg[500];
-	
-	//init
-	neigh = NULL;
-
-	
-	//I search in the table the entry corresponding to the actual source
-	for(i=0 ; i < op_prg_list_size(neighbor_table_wu_li); i++)
-		{
-			neigh = op_prg_list_access(neighbor_table_wu_li , i);
-			if ((neigh->address == addr) && ((neigh->bidirect == bidirect) || ((neigh->hops == hops) && (hops ==1))))
-				{
-					neigh->weight 	= weight;
-					neigh->hops 	= hops;
-					neigh->bidirect = bidirect;
-					neigh->timeout 	= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;
-					
-					empty_list(neigh->neighbors);
-					op_prg_mem_free(neigh->neighbors);
-					neigh->neighbors = neighbors;
-
-					if (DEBUG>MAX)
-						{
-							sprintf(msg, "%d updates its neighbor table : addr %d, weight %d, hops %d, bidirect %d at %f\n", my_address , neigh->address , neigh->weight , neigh->hops , neigh->bidirect , neigh->timeout);
-							cluster_message(msg);
-						}
-					return;
-				}
-		}
-	
-	//No entry -> we add one (empty by default)
-	if ((neigh == NULL) || (neigh->address != addr))
-		{
-			neigh = malloc(sizeof(neigh_wu));
-			if (neigh == NULL)
-				printf("Error in the creation of a new neighbors in the neighbors table of WU & Li\n");
-					
-			neigh->address 	= addr;
-			neigh->weight 	= weight;
-			neigh->hops 	= hops;
-			neigh->bidirect = bidirect;
-			neigh->timeout 	= op_sim_time() + TIMEOUT_HELLO*INTERVALL_HELLO;
-					
-			neigh->neighbors = neighbors;
-		
-			op_prg_list_insert(neighbor_table_wu_li , neigh , OPC_LISTPOS_TAIL);
-			
-			if (DEBUG>MAX)
-				{
-					sprintf(msg, "%d adds in its neighbor table a new entry : addr %d, weight %d, hops %d, bidirect %d at %f\n", my_address , neigh->address , neigh->weight , neigh->hops , neigh->bidirect , neigh->timeout);
-					cluster_message(msg);
-				}
-		}
-}
-
-
-//Is a bidirect neighbor ?
-Boolean	is_neighbor_bidirect(Packet *pkptr){
-	Boolean		bidirect;
-	Boolean		is_fields_overflow;
-	int			addr;
-	int			i;
-	
-	i = 1;
-	is_fields_overflow = (i > MAX_FIELDS_IN_HELLO_RELAY) ;
-	while (op_pk_nfd_is_set(pkptr , hello_fields_names[i].address) && !is_fields_overflow )
-		{
-			op_pk_nfd_get(pkptr , hello_fields_names[i].bidirect , &bidirect);
-			if (bidirect) 
-				{		
-					op_pk_nfd_get(pkptr , hello_fields_names[i].address ,	&addr);
-					if (addr == my_address)
-						return(OPC_TRUE);
-				}
-		
-			i++;
-			is_fields_overflow = (i > MAX_FIELDS_IN_HELLO_RELAY) ;
-		}
-	return(OPC_FALSE);
-}
-
-
-//I received one hello packet -> I add/update the neighbor_table associated to the source
-void update_the_neighbor_table_associated_to_one_neighbor(Packet* pkptr){
-	//infos
-	int				src_addr , src_weight , ttl;
-	Boolean			bidirect;
-	List			*neighbors;
-	//Control
-	char			msg[150];
-	
-	//Gathers info from the packet
-	op_pk_nfd_get(pkptr, "SRC"		, &src_addr);
-	op_pk_nfd_get(pkptr, "WEIGHT"	, &src_weight);
-	op_pk_nfd_get(pkptr, "TTL"		, &ttl);
-
-	//creates the neighbor_list* associated to the packet
-	neighbors = create_neighbors_list(pkptr);
-	//neighbors = op_prg_list_create();
-	
-	//Does the hello come from a bidirectionnal link ?
-	if (ttl_for_hellos == ttl)
-		bidirect = is_neighbor_bidirect(pkptr);
-	else
-		bidirect = OPC_TRUE;
-
-	//Updates the entry (information only for the =k_cds-neighborhood)
-	if ((ttl_for_hellos - ttl) + 1 <= k_cds)
-		update_neighbor_wu(src_addr , src_weight , (ttl_for_hellos - ttl) + 1 , bidirect , neighbors);
-
-	if (DEBUG>MAX)
-		{
-			sprintf(msg,"I received an hello packet from %d -> I add/update its neighbor_table that I stored\n" , src_addr);
-			cluster_message(msg);
-		}
-	
-
-}
-
-
-
-
 /*-----------------------------------------------------------------------------------------------
 
 								Manipulation of Lists
@@ -10464,13 +10294,13 @@ void print_neighbour_table()
 		cluster_message(msg);
 
 		ptr = neighbour_table;
-		cluster_message("Id	| hops  |  relay	|   weight	| bidirect	|state|   father	|father_hops|	id_ap	|ap_hops	|cluster_flag|  CH	|  ch_hops	|	ch_timeout	| timeout\n");
+		cluster_message("Id	| hops  |  relay	|   weight	| bidirect	|stab	|  state	|   father	|father_hops|	CH	|  ch_hops	|	ch_timeout	| timeout\n");
 		while(ptr!=NULL)
 			{
 				sprintf(msg,"%d	|   %d   |	%d	|	%d	|	%d", 	ptr->address , ptr->hops , ptr->relay , ptr->weight , ptr->bidirect);
-				sprintf(msg,"%s	|  %d" , 							msg, ptr->state);
-				sprintf(msg,"%s  |	%d	|	%d	|	%d	|	%d" , 			msg, ptr->father , ptr->father_hops , ptr->id_ap , ptr->ap_hops);
-				sprintf(msg,"%s	|	%d	 |	%d	|	%d	|	%f" , 	msg, ptr->cluster_init_flag , ptr->clusterhead , ptr->clusterhead_hops , ptr->clusterhead_timeout);
+				sprintf(msg,"%s	|  %d	|	%d" , 					msg, ptr->stability , ptr->state);
+				sprintf(msg,"%s	|	%d	|	%d" , 					msg, ptr->father , ptr->father_hops);
+				sprintf(msg,"%s	|	%d	|	%d	|	%f" , 			msg, ptr->clusterhead , ptr->clusterhead_hops , ptr->clusterhead_timeout);
 				sprintf(msg,"%s	| %f\n" , 							msg, ptr->timeout);
 				cluster_message(msg);
 				ptr=ptr->next;
@@ -17506,7 +17336,7 @@ cdcl_process_cluster_cds_process (void)
 					while (ptr_neigh != NULL)
 						{		
 							//My father already exists
-							if ((ptr_neigh->address != my_address) && (ptr_neigh->address == my_cds.father) && (ptr_neigh->state == DOMINATOR) && (ptr_neigh->hops <= k_cds) && (ptr_neigh->bidirect==1))
+							if ((ptr_neigh->address != my_address) && (ptr_neigh->address == my_cds.father) && (ptr_neigh->state == DOMINATOR) && (ptr_neigh->hops <= k_cds) && (ptr_neigh->bidirect))
 								is_father_alive = 1;
 							
 							//I am dominator or I am dominatee and my dominator (1-neighbour) can't see this node 
@@ -17516,6 +17346,8 @@ cdcl_process_cluster_cds_process (void)
 							
 							ptr_neigh	= ptr_neigh->next;
 						}
+					sprintf(msg, "alive %d\n", is_father_alive);
+					cluster_message(msg);
 					is_father_alive = is_father_alive && (my_cds.relay_timeout >= op_sim_time());
 				
 					//---------------------------------------------
@@ -17612,6 +17444,9 @@ cdcl_process_cluster_cds_process (void)
 								
 									if (DEBUG>LOW)
 										{
+											print_neighbour_table();
+											sprintf(msg , "fath_alive %d , my_cds.relay_timeout %f op_sim_time %f \n", is_father_alive, my_cds.relay_timeout , op_sim_time());
+											cluster_message(msg);
 											sprintf(msg,"%d has changed its father from %d to %d, relay %d, father_hops %d at %f (I'm dominatee, timeout_father_relay %d)\n",my_address , my_cds.father , new_father , new_father_relay ,  new_father_hops , op_sim_time() , my_cds.relay , my_cds.relay_timeout >= op_sim_time() );
 											cluster_message(msg);
 										}				

@@ -186,6 +186,9 @@
 			int		relay;
 			double	timeout;
 			short	bidirect;
+			
+			short	stability;
+			double	interval_hello;
 
 			List*	neighbors;
 			double	neighbors_timeout;

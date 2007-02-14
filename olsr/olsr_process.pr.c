@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED18CF 43ED18CF 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char olsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45BF299A 45BF299A 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -4491,6 +4491,11 @@ olsr_process (void)
 				//
 				//-----------------------------------------------------
 				
+				//The node parameters
+				op_ima_obj_attr_get(op_id_self(),	"is_AP" ,	&is_AP); 
+				if (is_AP)
+					nb_aps++;
+				
 				
 				//NB :   AP / normal nodes
 				if (nb_nodes == 0)
@@ -4558,10 +4563,6 @@ olsr_process (void)
 				op_ima_sim_attr_get (OPC_IMA_DOUBLE, 	"CPLEX_TIME",			&cplex_time);
 				
 					
-				//The node parameters
-				sprintf(var_name , "%s.is_AP" , PROCESS_ID_NAME);
-				op_ima_obj_attr_get(op_topo_parent(op_id_self()),	var_name ,	&is_AP); 
-				
 				
 				
 				
@@ -4572,8 +4573,6 @@ olsr_process (void)
 				//
 				//-----------------------------------------------------
 				
-				if (is_AP)
-					nb_aps++;
 				
 				//The AP is central only if it exists one single AP
 				if ((is_AP) && (nb_aps_expected == 1))
@@ -4589,6 +4588,8 @@ olsr_process (void)
 								op_ima_sim_attr_get(OPC_IMA_DOUBLE, "Y_MAX"  , &YMAX);
 								op_ima_obj_attr_set(node_id, "x position", XMAX/2);
 								op_ima_obj_attr_set(node_id, "y position", YMAX/2);
+								op_ima_obj_attr_get(node_id, "x position", &cplex_time);
+								printf("%f\n", cplex_time);
 							}
 					}
 				
@@ -4618,6 +4619,7 @@ olsr_process (void)
 								op_ima_sim_attr_get(OPC_IMA_DOUBLE, "Y_MAX"  , &YMAX);
 								op_ima_obj_attr_set(node_id, "x position", XMAX/2);
 								op_ima_obj_attr_set(node_id, "y position", YMAX/2);
+								op_ima_obj_attr_get(node_id, "x position", &cplex_time);
 							}
 					}
 				

@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char cbrp_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED18F3 43ED18F3 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char cbrp_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45BF2633 45BF2633 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -48,9 +48,9 @@ FSM_EXT_DECS
 
 /*	General parameters	*/
 #define		MAX_NETWORK_RADIUS				10
-#define		MAX_NB_NODES					100
+#define		MAX_NB_NODES					150
 #define		INTERVALL_HELLO_CH				2.0
-#define		MAX_ADDRESS						101
+#define		MAX_ADDRESS						160
 #define		LOW_SPEED						1
 #define		HIGH_SPEED						2
 #define		PROMISCUOUS_FOR_UNICAST			0
@@ -86,7 +86,7 @@ FSM_EXT_DECS
 #define		TIMEOUT_RREQ_PK_BUFFER			0.5
 
 /* HELLOS */
-#define		MAX_FIELDS_IN_HELLO				40			//From 0 to 40
+#define		MAX_FIELDS_IN_HELLO				60			//From 0 to 60
 #define		MAX_CLUSTER_FIELDS_IN_HELLO		11			//From 0 to 10
 
 
@@ -4629,6 +4629,8 @@ cbrp_process (void)
 					}
 				if (my_address==0)
 					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
+				
+				
 				}
 
 
@@ -4675,6 +4677,9 @@ cbrp_process (void)
 				//
 				//-----------------------------------------------------
 				
+				op_ima_obj_attr_get(op_id_self(), "is_AP", &is_AP);
+				if (is_AP)
+					nb_aps++;
 				
 				//NB :   AP / normal nodes
 				if (nb_nodes == 0)
@@ -4707,6 +4712,8 @@ cbrp_process (void)
 				
 				
 				
+				
+				
 				//----------------------------------------------------
 				//
 				//	Recuperation of simulation parameters
@@ -4727,11 +4734,6 @@ cbrp_process (void)
 				op_ima_sim_attr_get (OPC_IMA_INTEGER,	"ACK_FOR_DATA", 		&ACK_FOR_DATA);
 				
 				
-				//The node parameters
-				//sprintf(var_name , "is_AP" , PROCESS_ID_NAME);
-				op_ima_obj_attr_get(op_id_self(),	"is_AP" ,	&is_AP); 
-				if (is_AP)
-					nb_aps++;
 				
 				
 				
@@ -4750,6 +4752,7 @@ cbrp_process (void)
 						node_id = op_topo_parent (process_id);
 						op_ima_sim_attr_get(OPC_IMA_INTEGER, 	"SP_LOW_MOBILITY_MODEL"	, &MOBILITY_MODEL);
 						
+				
 						//NB : NEITHER_POSITION_NOR_MOBILITY = 5
 						if (MOBILITY_MODEL != 5)
 							{
@@ -4794,7 +4797,6 @@ cbrp_process (void)
 					op_sim_end("We have too many nodes","please increase the value of MAX_ADDRESS","in the header block of the cdcl_routing process","");
 				if (nb_nodes >= MAX_NB_NODES)
 					op_sim_end("We have too many nodes","please increase the value of MAX_NB_NODES","in the header block of the cdcl_routing process","");
-				
 				
 				//----------------------- Stats ---------------------
 				my_stat_id = nb_nodes++;							//The first node has id 0

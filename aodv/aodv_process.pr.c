@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char aodv_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45BF2342 45BF2342 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char aodv_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED1A02 43ED1A02 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -3642,6 +3642,7 @@ aodv_process (void)
 				//-----------------------------------------------------
 				
 				
+				
 				//The AP is central only if it exists one single AP
 				if ((is_AP) && (nb_aps_expected == 1))
 					{
@@ -4014,8 +4015,6 @@ aodv_process (void)
 					}
 				if (aodv_myAddr==0)
 					op_sim_end("Error : we have a null address","Probable Problem with random address and/or with Mac and Ad-hoc Addresses cohabitation) \n","","");
-				
-				printf("%d\n", aodv_myAddr);
 				}
 
 

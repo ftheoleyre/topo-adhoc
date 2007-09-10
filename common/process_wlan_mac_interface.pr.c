@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char process_wlan_mac_interface_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A op_runsim 7 43C50900 43C50900 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                               ";
+static const char process_wlan_mac_interface_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 41E5501E 41E5501E 1 ares-theo-1 Fabrice@Theoleyre 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                        ";
 #include <string.h>
 
 
@@ -332,20 +332,9 @@ process_wlan_mac_interface (void)
 					}
 				*/
 				
-				int pk_type;
-				
 				//Gathers the Ici sent along the packet
 				ici_dest_ptr = op_intrpt_ici();
 				op_ici_attr_get(ici_dest_ptr,"dest_addr",&curr_dest_addr);
-				
-				//debug
-				op_pk_nfd_get(pkptr , "OPTION_TYPE", &pk_type);
-				/*if (pk_type == 11)
-					{
-						op_pk_print(pkptr);
-						printf("----------------->%d\n", curr_dest_addr);
-					}
-				*/
 				
 				//Debug Purpose if No 
 				if (ici_dest_ptr == NULL)

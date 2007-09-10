@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char vsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45924CC3 45924CC3 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char vsr_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 433A5E7D 433A5E7D 1 citi-einstein-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                             ";
 #include <string.h>
 
 
@@ -3519,7 +3519,7 @@ vsr_process (void)
 			/** state (idle) exit executives **/
 			FSM_STATE_EXIT_UNFORCED (1, "idle", "vsr_process () [idle exit execs]")
 				{
-				//printf ("%d - %d - %d - %d - %d\n", op_intrpt_type(), op_intrpt_code(), OPC_INTRPT_SELF, OPC_INTRPT_STRM, OPC_INTRPT_ENDSIM);
+				//printf (msg,"%d - %d - %d - %d - %d\n", op_intrpt_type(), op_intrpt_code(), OPC_INTRPT_SELF, OPC_INTRPT_STRM, OPC_INTRPT_ENDSIM);
 				
 				}
 
@@ -3961,7 +3961,7 @@ vsr_process (void)
 								{
 									sprintf(filename,"results_vsr/%d_vsr_debug_pk_data.txt",begin_loc_time);		
 									data_file = fopen(filename , "w");
-									fprintf(data_file,"#SRC	|	DEST	|	REPAIRS	|	SENT		|	DELAY		|	METHOD	|	GENERATION	|	DISTANCE	|	ROUTE\n");
+									fprintf(data_file,"#SRC	|	DEST	|	SIZE	|	HOPS	|	RETRY	|REPAIRS	|	SENT		|	RECEIVED	|	DELAY		|	METHOD	|	GENERATION	|	DISTANCE	|	ROUTE\n");
 								}
 							for (i=0 ;  i < stats_nb_data_pk ; i++ )
 								{
@@ -4024,7 +4024,7 @@ vsr_process (void)
 										}
 									tmp_distance = sqrt( pow(stats_data_pk [i].src_x_pos - stats_data_pk [i].dest_x_pos , 2) + pow(stats_data_pk [i].src_y_pos - stats_data_pk [i].dest_y_pos , 2));
 									if (DEBUG_DATA >= LOW)
-										fprintf(data_file,"%d / %d		%d		%f		%f		%d			%f		%f		%s		<-	%d\n", stats_data_pk[i].source , stats_data_pk[i].dest , stats_data_pk[i].nb_repairs , stats_data_pk[i].time_emission , stats_data_pk[i].time_reception - stats_data_pk[i].time_emission , stats_data_pk[i].method , stats_data_pk[i].time_generation , tmp_distance , stats_data_pk[i].route , i);
+										fprintf(data_file,"%d		%d		%d		%d		%d		%d		%f		%f		%f		%d			%f		%f		%s		<-	%d\n", stats_data_pk[i].source , stats_data_pk[i].dest , stats_data_pk[i].pk_size, stats_data_pk[i].hops , stats_data_pk[i].nb_retry , stats_data_pk[i].nb_repairs , stats_data_pk[i].time_emission , stats_data_pk[i].time_reception , stats_data_pk[i].time_reception - stats_data_pk[i].time_emission , stats_data_pk[i].method , stats_data_pk[i].time_generation , tmp_distance , stats_data_pk[i].route , i);
 								}		
 							if (DEBUG_DATA>= LOW)
 								fclose(data_file);

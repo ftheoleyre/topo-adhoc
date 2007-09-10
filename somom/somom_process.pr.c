@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char somom_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 45A65847 45A65847 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+static const char somom_process_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A modeler 7 43ED13A2 43ED13A2 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                                 ";
 #include <string.h>
 
 
@@ -50,9 +50,9 @@ FSM_EXT_DECS
 #define		STRM_TO_LOWER					0
 
 // DATA
-//#define		INTERVALL_DATA_PK_AP			2.0
-//#define		INTERARRIVAL_DATA_PK			0.25
-//#define		NB_PK_PER_FLOW					8
+#define		INTERVALL_DATA_PK_AP			2.0
+#define		INTERARRIVAL_DATA_PK			0.25
+#define		NB_PK_PER_FLOW					8
 #define		DATA_PK_UPLOAD_RATIO			1
 
 //Max nb of pk for stats
@@ -95,8 +95,6 @@ FSM_EXT_DECS
 #define		SENT							2
 #define		RECEIVED						3
 
-//special values
-#define RANDOM_DEST							0
 
 
 //----------------------------------------------------------------------
@@ -524,9 +522,6 @@ typedef struct
 	List*	                  		paging_routing_table;
 	Boolean	                		is_paging_master;
 	Boolean	                		is_sleeping_authorized;
-	int	                    		destination_conf;
-	double	                 		INTERARRIVAL_DATA_PK;
-	int	                    		NB_PK_PER_FLOW;
 	} somom_process_state;
 
 #define pr_state_ptr            		((somom_process_state*) SimI_Mod_State_Ptr)
@@ -552,9 +547,6 @@ typedef struct
 #define paging_routing_table    		pr_state_ptr->paging_routing_table
 #define is_paging_master        		pr_state_ptr->is_paging_master
 #define is_sleeping_authorized  		pr_state_ptr->is_sleeping_authorized
-#define destination_conf        		pr_state_ptr->destination_conf
-#define INTERARRIVAL_DATA_PK    		pr_state_ptr->INTERARRIVAL_DATA_PK
-#define NB_PK_PER_FLOW          		pr_state_ptr->NB_PK_PER_FLOW
 
 /* This macro definition will define a local variable called	*/
 /* "op_sv_ptr" in each function containing a FIN statement.	*/
@@ -2774,12 +2766,7 @@ somom_process (void)
 				op_ima_sim_attr_get(OPC_IMA_DOUBLE, "INTERN_COMMUNICATIONS_RATIO", 	&intern_com_ratio);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER,"DEBUG_LOC", 					&DEBUG);
 				op_ima_sim_attr_get(OPC_IMA_INTEGER,"DATA_PK_SIZE", 				&data_pk_size);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER,"DESTINATION", 					&destination_conf);
-				op_ima_sim_attr_get(OPC_IMA_DOUBLE,	"INTERARRIVAL_DATA_PK",    		&INTERARRIVAL_DATA_PK);
-				op_ima_sim_attr_get(OPC_IMA_INTEGER,"NB_PK_PER_FLOW",   	 		&NB_PK_PER_FLOW);
-				
-				
-				if (nb_nodes == 0) 
+				if (nb_nodes == 0)
 					{
 						op_ima_sim_attr_get(OPC_IMA_INTEGER,"IS_PAGING_ACTIVATED", 	&is_paging_activated);
 						op_ima_sim_attr_get(OPC_IMA_DOUBLE, "RATIO_SLEEPING_NODES",	&ratio_of_sleeping_nodes);
@@ -2886,22 +2873,17 @@ somom_process (void)
 					
 				//------------------ INTERRUPTIONS------------------
 				//Data Transmission
-				if (is_AP){
-						
-					if ((is_paging_master) || (!is_paging_activated))
-						for (i=0; i < nb_connections; i++)
-							op_intrpt_schedule_self (TIME_BEGIN_DATA + op_dist_uniform( (double) INTERARRIVAL_DATA_PK * NB_PK_PER_FLOW) , PK_DATA_GENERATE_CODE);
-				}
-				else if ((nb_connections > actual_nb_connections) && (!is_sleeping_authorized)){
-					
-					op_intrpt_schedule_self (TIME_BEGIN_DATA + op_dist_uniform( (double) INTERARRIVAL_DATA_PK * NB_PK_PER_FLOW / DATA_PK_UPLOAD_RATIO ) , PK_DATA_GENERATE_CODE);
-					actual_nb_connections++;
-					
-				}
-				
-				//error verification
-				if ((nb_connections != 1) && (destination_conf != RANDOM_DEST))
-					op_sim_end("Error: you cannot configure statically a destination node", "and have more than one connection","Please modify the value of DESTINATION and NB_CONNECTIONS", "accordingly");
+				if (is_AP)
+					{
+						if ((is_paging_master) || (!is_paging_activated))
+							for (i=0; i < nb_connections; i++)
+								op_intrpt_schedule_self (TIME_BEGIN_DATA + op_dist_uniform( (double) INTERVALL_DATA_PK_AP) , PK_DATA_GENERATE_CODE);
+					}
+				else if ((nb_connections > actual_nb_connections) && (!is_sleeping_authorized))
+					{
+						op_intrpt_schedule_self (TIME_BEGIN_DATA + op_dist_uniform( (double) INTERVALL_DATA_PK_AP / DATA_PK_UPLOAD_RATIO ) , PK_DATA_GENERATE_CODE);
+						actual_nb_connections++;
+					}
 				
 				//Route Update if Usefull
 				op_intrpt_schedule_self (op_sim_time() + op_dist_uniform( (double)TIMEOUT_ROUTE_UPDATE), SEND_UPDATE_CODE);
@@ -3416,35 +3398,28 @@ somom_process (void)
 				//------------------------------------------------------------------------------------------
 				
 				//The final destination is random if we are the AP, but is the AP if we are a classical node
-				if (!is_AP){
-					
-					if (op_dist_uniform (1.0) > intern_com_ratio)
-						dest_final	= ADDR_MULTICAST_AP;
-					else
-						dest_final	= get_a_not_sleeping_address();
-					
-					//The next source is either me (if the destination is not random) or another random node
-					if (destination_conf == RANDOM_DEST)
-						process_remote_id = get_a_not_sleeping_process_id();
-					else
-						process_remote_id = op_id_self();
-				}
-				else{
-					
-					//If it is an extern communication, I choose a random intern node
-					if (op_dist_uniform (1.0) >= intern_com_ratio){
-				
-						if (destination_conf == RANDOM_DEST)
-							dest_final	= get_a_not_sleeping_address();
+				if (!is_AP)
+					{
+						if (op_dist_uniform (1.0) > intern_com_ratio)
+							dest_final	= ADDR_MULTICAST_AP;
 						else
-							dest_final	= destination_conf;
+							dest_final	= get_a_not_sleeping_address();
+						
+						process_remote_id = get_a_not_sleeping_process_id();
+						
 					}
-					//If it is an intern communication, I reduce the probability to send a data packet (I am a privileged node)
-					else if (op_dist_uniform (1.0) <= 1 / (nb_nodes * nb_connections) )
-						dest_final = get_a_not_sleeping_address();
-					else
-						dest_final = -1;
-				}
+				else
+					{
+					
+						//If it is an extern communication, I choose a random intern node
+						if (op_dist_uniform (1.0) >= intern_com_ratio)
+							dest_final	= get_a_not_sleeping_address();
+						//If it is an intern communication, I reduce the probability to send a data packet (I am a privileged node)
+						else if (op_dist_uniform (1.0) <= 1 / (nb_nodes * nb_connections) )
+							dest_final = get_a_not_sleeping_address();
+						else
+							dest_final = -1;
+					}
 				
 				
 				
@@ -3479,18 +3454,18 @@ somom_process (void)
 				
 				
 				if (is_AP)
-					op_intrpt_schedule_self  (op_sim_time() + op_dist_exponential(INTERARRIVAL_DATA_PK*NB_PK_PER_FLOW) , PK_DATA_GENERATE_CODE);
+					op_intrpt_schedule_self  (op_sim_time() + op_dist_exponential(INTERVALL_DATA_PK_AP*NB_PK_PER_FLOW) , PK_DATA_GENERATE_CODE);
 				else
 					{
 						//If the number of nodes is inferior to the number of simultaneous connections (several connections per node)
 						if (nb_connections > actual_nb_connections)
 							{
-								op_intrpt_schedule_self (op_sim_time() + op_dist_uniform( (double) INTERARRIVAL_DATA_PK*NB_PK_PER_FLOW / DATA_PK_UPLOAD_RATIO ) , PK_DATA_GENERATE_CODE);
+								op_intrpt_schedule_self (op_sim_time() + op_dist_uniform( (double) INTERVALL_DATA_PK_AP / DATA_PK_UPLOAD_RATIO ) , PK_DATA_GENERATE_CODE);
 								actual_nb_connections++;
 							}
 				
 						//As usual, we weak up randomly the next source
-						op_intrpt_schedule_remote(op_sim_time() + op_dist_exponential( (double)INTERARRIVAL_DATA_PK*NB_PK_PER_FLOW / DATA_PK_UPLOAD_RATIO) , PK_DATA_GENERATE_CODE , process_remote_id);
+						op_intrpt_schedule_remote(op_sim_time() + op_dist_exponential( (double)INTERVALL_DATA_PK_AP * NB_PK_PER_FLOW / DATA_PK_UPLOAD_RATIO) , PK_DATA_GENERATE_CODE , process_remote_id);
 					}
 				
 				}
@@ -4208,9 +4183,6 @@ somom_process_terminate (void)
 #undef paging_routing_table
 #undef is_paging_master
 #undef is_sleeping_authorized
-#undef destination_conf
-#undef INTERARRIVAL_DATA_PK
-#undef NB_PK_PER_FLOW
 
 
 
@@ -4336,21 +4308,6 @@ somom_process_svar (void * gen_ptr, const char * var_name, char ** var_p_ptr)
 	if (strcmp ("is_sleeping_authorized" , var_name) == 0)
 		{
 		*var_p_ptr = (char *) (&prs_ptr->is_sleeping_authorized);
-		FOUT;
-		}
-	if (strcmp ("destination_conf" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->destination_conf);
-		FOUT;
-		}
-	if (strcmp ("INTERARRIVAL_DATA_PK" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->INTERARRIVAL_DATA_PK);
-		FOUT;
-		}
-	if (strcmp ("NB_PK_PER_FLOW" , var_name) == 0)
-		{
-		*var_p_ptr = (char *) (&prs_ptr->NB_PK_PER_FLOW);
 		FOUT;
 		}
 	*var_p_ptr = (char *)OPC_NIL;

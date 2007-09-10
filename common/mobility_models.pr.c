@@ -4,7 +4,7 @@
 
 
 /* This variable carries the header into the object file */
-static const char mobility_models_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A op_runsim 7 43C50901 43C50901 1 ares-theo-1 ftheoley 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                               ";
+static const char mobility_models_pr_c [] = "MIL_3_Tfile_Hdr_ 81A 30A op_runsim 7 419E1FD6 419E1FD6 1 ares-theo-1 Fabrice@Theoleyre 0 0 none none 0 0 none 0 0 0 0 0 0                                                                                                                                                                                                                                                                                                                                                                                                      ";
 #include <string.h>
 
 
@@ -60,7 +60,7 @@ FSM_EXT_DECS
 #define		XMIN				0
 #define		YMIN				0
 #define		PAUSE_TIME			0
-#define 	MVT_STEP        	2
+#define 	MVT_STEP        	5
 
 #define		DEBUG_POSITIONS		0
 
